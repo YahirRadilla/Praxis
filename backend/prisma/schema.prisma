@@ -7,4 +7,125 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelos: Revisión 4
+// Núcleo (Must — Épicas A-C del backlog): cuentas, catálogo de ODS, proyectos y equipo.
+// Retos, seguimiento/evaluación y el resto de los módulos se agregan en migraciones
+// siguientes conforme el backlog los va priorizando (ver mvp_alcance_backlog.md).
+
+enum AccountType {
+  STUDENT
+  TEACHER
+  ORGANIZATION
+}
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum TeamRequestRole {
+  OWNER
+  COLLABORATOR
+  TEACHER
+  ORGANIZATION
+}
+
+enum TeamRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  email        String      @unique
+  passwordHash String
+  name         String
+  accountType  AccountType
+  skills       String[]
+  interests    String[]
+  verified     Boolean     @default(false)
+  verifiedAt   DateTime?
+  createdAt    DateTime    @default(now())
+
+  ownedProjects        Project[]     @relation("ProjectOwner")
+  teachingProjects     Project[]     @relation("ProjectTeacher")
+  organizationProjects Project[]     @relation("ProjectOrganization")
+  teamRequests         TeamRequest[]
+
+  @@map("users")
+}
+
+model Sdg {
+  id       Int    @id
+  name     String
+  colorHex String
+
+  projects ProjectSdg[]
+
+  @@map("sdgs")
+}
+
+model Project {
+  id               Int               @id @default(autoincrement())
+  name             String
+  description      String
+  problemStatement String
+  objectives       String
+  status           ProjectStatus     @default(DRAFT)
+  visibility       ProjectVisibility @default(PUBLIC)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  ownerId Int
+  owner   User @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  teacherId Int?
+  teacher   User? @relation("ProjectTeacher", fields: [teacherId], references: [id])
+
+  organizationId Int?
+  organization   User? @relation("ProjectOrganization", fields: [organizationId], references: [id])
+
+  // challengeId (opcional, -> Challenge) se agrega cuando el módulo de Retos entre al backlog.
+
+  sdgs         ProjectSdg[]
+  teamRequests TeamRequest[]
+
+  @@map("projects")
+}
+
+model ProjectSdg {
+  projectId Int
+  sdgId     Int
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sdg     Sdg     @relation(fields: [sdgId], references: [id])
+
+  @@id([projectId, sdgId])
+  @@map("project_sdgs")
+}
+
+model TeamRequest {
+  id         Int               @id @default(autoincrement())
+  projectId  Int
+  userId     Int
+  role       TeamRequestRole
+  status     TeamRequestStatus @default(PENDING)
+  message    String?
+  createdAt  DateTime          @default(now())
+  resolvedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@map("team_requests")
+}

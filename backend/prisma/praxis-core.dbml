@@ -1,0 +1,72 @@
+Project praxis_core {
+  database_type: 'PostgreSQL'
+  Note: 'Nucleo (Must) de Praxis: cuentas, catalogo de ODS, proyectos y equipo. Generado a partir de backend/prisma/schema.prisma.'
+}
+
+Table users {
+  id integer [pk, increment]
+  email varchar [unique, not null]
+  passwordHash varchar [not null]
+  name varchar [not null]
+  accountType varchar [not null, note: 'STUDENT | TEACHER | ORGANIZATION']
+  skills text [note: 'arreglo de texto (PostgreSQL array)']
+  interests text [note: 'arreglo de texto (PostgreSQL array)']
+  verified boolean [not null, default: false]
+  verifiedAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+
+  Note: 'Cuenta unica para estudiante, docente u organizacion, diferenciada por accountType.'
+}
+
+Table sdgs {
+  id integer [pk, note: '1 a 17, catalogo fijo']
+  name varchar [not null]
+  colorHex varchar [not null]
+
+  Note: 'Catalogo de los 17 Objetivos de Desarrollo Sostenible.'
+}
+
+Table projects {
+  id integer [pk, increment]
+  name varchar [not null]
+  description text [not null]
+  problemStatement text [not null]
+  objectives text [not null]
+  status varchar [not null, default: 'DRAFT', note: 'DRAFT | PUBLISHED | IN_PROGRESS | IN_REVIEW | COMPLETED | ARCHIVED']
+  visibility varchar [not null, default: 'PUBLIC', note: 'PUBLIC | PRIVATE']
+  ownerId integer [not null, ref: > users.id]
+  teacherId integer [ref: > users.id]
+  organizationId integer [ref: > users.id]
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+
+  Note: 'Proyecto propuesto por un usuario; docente y organizacion son opcionales.'
+}
+
+Table project_sdgs {
+  projectId integer [not null, ref: > projects.id]
+  sdgId integer [not null, ref: > sdgs.id]
+
+  indexes {
+    (projectId, sdgId) [pk]
+  }
+
+  Note: 'Tabla puente: un proyecto puede vincularse a varios ODS.'
+}
+
+Table team_requests {
+  id integer [pk, increment]
+  projectId integer [not null, ref: > projects.id]
+  userId integer [not null, ref: > users.id]
+  role varchar [not null, note: 'OWNER | COLLABORATOR | TEACHER | ORGANIZATION']
+  status varchar [not null, default: 'PENDING', note: 'PENDING | ACCEPTED | REJECTED']
+  message text
+  createdAt timestamp [not null, default: `now()`]
+  resolvedAt timestamp
+
+  indexes {
+    (projectId, userId) [unique]
+  }
+
+  Note: 'Solicitud de participacion en un proyecto; el mismo registro funciona como membresia una vez aceptada.'
+}

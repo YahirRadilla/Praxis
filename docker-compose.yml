@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: praxis
+      POSTGRES_PASSWORD: praxis
+      POSTGRES_DB: praxis
+    ports:
+      # 5433 en el host: el 5432 nativo de Windows (postgresql-x64-18) ya lo ocupa.
+      - "5433:5432"
+    volumes:
+      - praxis_db_data:/var/lib/postgresql/data
+
+volumes:
+  praxis_db_data:

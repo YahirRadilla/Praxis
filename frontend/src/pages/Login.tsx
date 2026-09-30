@@ -1,13 +1,34 @@
-import { useState, type FormEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useLogin } from "../hooks/useAuthMutations";
+import { getErrorMessage } from "../services/api";
+import PasswordInput from "../components/PasswordInput";
+import FieldError from "../components/FieldError";
+import { loginFormSchema, type LoginFormValues } from "../schemas/auth.schema";
 
 function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
+  const loginMutation = useLogin();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+  });
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSubmitted(true);
+  function onSubmit(values: LoginFormValues) {
+    loginMutation.mutate(values, {
+      onSuccess: (data) => {
+        toast.success(`Bienvenido, ${data.user.name}`);
+        navigate("/inicio", { replace: true });
+      },
+      onError: (error) => {
+        toast.error(getErrorMessage(error, "No se pudo iniciar sesión. Intentalo de nuevo."));
+      },
+    });
   }
 
   return (
@@ -19,7 +40,11 @@ function Login() {
         <span className="font-heading text-[17px] font-bold text-ink">Praxis</span>
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-[400px] flex flex-col gap-4">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        className="w-full max-w-[400px] flex flex-col gap-4"
+      >
         <div className="flex flex-col gap-1.5 text-center mb-2">
           <h1 className="font-heading text-2xl font-bold text-ink m-0">Inicia sesión</h1>
           <p className="text-[13.5px] leading-relaxed text-ink-soft m-0">
@@ -31,24 +56,25 @@ function Login() {
           <span className="text-[12.5px] font-semibold text-ink">Correo electrónico</span>
           <input
             type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@institucion.edu"
-            className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+            {...register("email")}
+            className={`border rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-offset-1 ${
+              errors.email
+                ? "border-red-400 focus:outline-red-400"
+                : "border-rule focus:outline-accent-primary"
+            }`}
           />
+          <FieldError message={errors.email?.message} />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-semibold text-ink">Contraseña</span>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+          <PasswordInput
             placeholder="••••••••"
-            className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+            hasError={!!errors.password}
+            {...register("password")}
           />
+          <FieldError message={errors.password?.message} />
         </label>
 
         <a href="#" className="self-end -mt-1 text-xs text-ink-soft hover:text-accent-primary">
@@ -57,22 +83,17 @@ function Login() {
 
         <button
           type="submit"
-          className="rounded-full bg-ink text-paper text-[13.5px] font-bold py-3.5 cursor-pointer hover:bg-accent-primary"
+          disabled={loginMutation.isPending}
+          className="rounded-full bg-ink text-paper text-[13.5px] font-bold py-3.5 cursor-pointer hover:bg-accent-primary disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Iniciar sesión
+          {loginMutation.isPending ? "Ingresando…" : "Iniciar sesión"}
         </button>
-
-        {submitted && (
-          <p className="text-center text-[11.5px] text-ink-faint m-0">
-            Pantalla de interfaz únicamente — la autenticación real llega en la Revisión 5.
-          </p>
-        )}
 
         <p className="text-center text-[12.5px] text-ink-soft mt-2">
           ¿No tenés cuenta?{" "}
-          <a href="#" className="text-accent-primary font-semibold">
+          <Link to="/register" className="text-accent-primary font-semibold">
             Regístrate
-          </a>
+          </Link>
         </p>
       </form>
     </main>

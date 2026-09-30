@@ -98,6 +98,20 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: "paola.ramos@gmail.com" },
+    update: {},
+    create: {
+      email: "paola.ramos@gmail.com",
+      passwordHash,
+      name: "Paola Ramos",
+      accountType: AccountType.INDEPENDENT,
+      skills: ["Gestión comunitaria", "Fotografía"],
+      interests: ["Impacto social", "Voluntariado"],
+      verified: false,
+    },
+  });
+
   console.log("Seeding sample project...");
   const project = await prisma.project.upsert({
     where: { id: 1 },

@@ -15,6 +15,7 @@ enum AccountType {
   STUDENT
   TEACHER
   ORGANIZATION
+  INDEPENDENT
 }
 
 enum ProjectStatus {

@@ -113,22 +113,21 @@ async function main() {
   });
 
   console.log("Seeding sample project...");
-  const project = await prisma.project.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: "Recicla UDG",
-      description: "Plataforma para coordinar puntos de acopio de reciclaje dentro del campus.",
-      problemStatement: "El campus no tiene un sistema centralizado para gestionar el reciclaje de residuos.",
-      objectives: "Reducir en 30% los residuos no separados durante el primer semestre de operación.",
-      status: ProjectStatus.PUBLISHED,
-      visibility: ProjectVisibility.PUBLIC,
-      ownerId: student.id,
-      teacherId: teacher.id,
-      organizationId: organization.id,
-    },
-  });
+  const project =
+    (await prisma.project.findFirst({ where: { name: "Recicla UDG" } })) ??
+    (await prisma.project.create({
+      data: {
+        name: "Recicla UDG",
+        description: "Plataforma para coordinar puntos de acopio de reciclaje dentro del campus.",
+        problemStatement: "El campus no tiene un sistema centralizado para gestionar el reciclaje de residuos.",
+        objectives: "Reducir en 30% los residuos no separados durante el primer semestre de operación.",
+        status: ProjectStatus.PUBLISHED,
+        visibility: ProjectVisibility.PUBLIC,
+        ownerId: student.id,
+        teacherId: teacher.id,
+        organizationId: organization.id,
+      },
+    }));
 
   console.log("Linking project to SDGs 11 and 12...");
   await prisma.projectSdg.upsert({

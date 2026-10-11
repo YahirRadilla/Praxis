@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import type { User } from "@prisma/client";
 import { createUser, findUserByEmail } from "../repositories/user.repository";
+import { toPublicUser } from "./user.service";
 import { HttpError } from "../types/http-error";
 import type { AppJwtPayload } from "../types/auth";
 import type { LoginInput, RegisterInput } from "../schemas/auth.schema";
@@ -22,11 +23,6 @@ function getJwtSecret(): string {
 function signToken(user: Pick<User, "id" | "accountType">): string {
   const payload: AppJwtPayload = { sub: user.id, accountType: user.accountType };
   return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_EXPIRES_IN });
-}
-
-function toPublicUser(user: User) {
-  const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
 }
 
 export async function register(input: RegisterInput) {

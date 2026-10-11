@@ -7,6 +7,7 @@ import { getErrorMessage } from "../services/api";
 import PasswordInput from "../components/PasswordInput";
 import FieldError from "../components/FieldError";
 import { loginFormSchema, type LoginFormValues } from "../schemas/auth.schema";
+import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 
 function Login() {
   const navigate = useNavigate();
@@ -26,13 +27,13 @@ function Login() {
         navigate("/inicio", { replace: true });
       },
       onError: (error) => {
-        toast.error(getErrorMessage(error, "No se pudo iniciar sesión. Intentalo de nuevo."));
+        toast.error(getErrorMessage(error, "No se pudo iniciar sesión. Inténtalo de nuevo."));
       },
     });
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center gap-8 p-6">
+    <main className="min-h-dvh flex flex-col items-center justify-center gap-8 p-6 bg-surface-ground">
       <div className="flex items-center gap-2.5">
         <span className="relative w-[30px] h-[30px] rounded-full border-4 border-ink">
           <span className="absolute top-px -right-px w-2.5 h-2.5 rounded-full bg-paper-raised border-[1.6px] border-ink" />
@@ -43,7 +44,7 @@ function Login() {
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="w-full max-w-[400px] flex flex-col gap-4"
+        className={`w-full max-w-[400px] flex flex-col gap-4 bg-paper-raised border border-rule rounded-2xl p-8 ${CARD_SHADOW}`}
       >
         <div className="flex flex-col gap-1.5 text-center mb-2">
           <h1 className="font-heading text-2xl font-bold text-ink m-0">Inicia sesión</h1>
@@ -84,13 +85,13 @@ function Login() {
         <button
           type="submit"
           disabled={loginMutation.isPending}
-          className="rounded-full bg-ink text-paper text-[13.5px] font-bold py-3.5 cursor-pointer hover:bg-accent-primary disabled:opacity-60 disabled:cursor-not-allowed"
+          className={`rounded-full text-[13.5px] font-bold py-3.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${PRIMARY_BUTTON}`}
         >
           {loginMutation.isPending ? "Ingresando…" : "Iniciar sesión"}
         </button>
 
         <p className="text-center text-[12.5px] text-ink-soft mt-2">
-          ¿No tenés cuenta?{" "}
+          ¿No tienes cuenta?{" "}
           <Link to="/register" className="text-accent-primary font-semibold">
             Regístrate
           </Link>

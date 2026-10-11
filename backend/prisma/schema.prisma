@@ -45,6 +45,18 @@ enum TeamRequestStatus {
   REJECTED
 }
 
+enum ActivityStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  OVERDUE
+}
+
+enum EvidenceType {
+  FILE
+  LINK
+}
+
 model User {
   id           Int         @id @default(autoincrement())
   email        String      @unique
@@ -57,10 +69,13 @@ model User {
   verifiedAt   DateTime?
   createdAt    DateTime    @default(now())
 
-  ownedProjects        Project[]     @relation("ProjectOwner")
-  teachingProjects     Project[]     @relation("ProjectTeacher")
-  organizationProjects Project[]     @relation("ProjectOrganization")
+  ownedProjects        Project[]        @relation("ProjectOwner")
+  teachingProjects     Project[]        @relation("ProjectTeacher")
+  organizationProjects Project[]        @relation("ProjectOrganization")
   teamRequests         TeamRequest[]
+  ownedActivities      Activity[]
+  progressUpdates      ProgressUpdate[]
+  savedProjects        SavedProject[]
 
   @@map("users")
 }
@@ -97,8 +112,11 @@ model Project {
 
   // challengeId (opcional, -> Challenge) se agrega cuando el módulo de Retos entre al backlog.
 
-  sdgs         ProjectSdg[]
-  teamRequests TeamRequest[]
+  sdgs            ProjectSdg[]
+  teamRequests    TeamRequest[]
+  activities      Activity[]
+  progressUpdates ProgressUpdate[]
+  savedBy         SavedProject[]
 
   @@map("projects")
 }
@@ -129,4 +147,65 @@ model TeamRequest {
 
   @@unique([projectId, userId])
   @@map("team_requests")
+}
+
+model Activity {
+  id          Int            @id @default(autoincrement())
+  projectId   Int
+  ownerId     Int
+  title       String
+  description String?
+  dueDate     DateTime
+  status      ActivityStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner           User             @relation(fields: [ownerId], references: [id])
+  progressUpdates ProgressUpdate[]
+
+  @@map("activities")
+}
+
+model ProgressUpdate {
+  id           Int      @id @default(autoincrement())
+  projectId    Int
+  activityId   Int?
+  authorId     Int
+  text         String
+  postedToFeed Boolean  @default(false)
+  validated    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity Activity?  @relation(fields: [activityId], references: [id])
+  author   User       @relation(fields: [authorId], references: [id])
+  evidence Evidence[]
+
+  @@map("progress_updates")
+}
+
+model SavedProject {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  projectId Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("saved_projects")
+}
+
+model Evidence {
+  id               Int          @id @default(autoincrement())
+  progressUpdateId Int
+  type             EvidenceType
+  url              String
+  fileName         String?
+  createdAt        DateTime     @default(now())
+
+  progressUpdate ProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+
+  @@map("evidence")
 }

@@ -25,9 +25,48 @@
   --font-data: "Geist Mono", monospace;
 }
 
+:root[data-theme="dark"] {
+  --color-paper: #15171a;
+  --color-paper-raised: #1e2125;
+  --color-surface-ground: #101214;
+  --color-surface-accent: #3a5c42;
+  --color-surface-inverse: #d8ecd0;
+
+  --color-ink: #edeef0;
+  --color-ink-soft: #a8adb5;
+  --color-ink-faint: #70757d;
+  --color-fg-inverse: #ffffff;
+  --color-fg-muted: #9bc0a2;
+
+  --color-accent-primary: #3fa058;
+  --color-rule: #2c2f34;
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+button,
+a,
+[role="button"] {
+  outline: none;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease,
+    opacity 150ms ease, transform 100ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  transition: border-color 150ms ease, outline-color 150ms ease, box-shadow 150ms ease;
 }

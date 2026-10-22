@@ -45,6 +45,11 @@ enum TeamRequestStatus {
   REJECTED
 }
 
+enum TeamRequestInitiator {
+  REQUESTER
+  OWNER
+}
+
 enum ActivityStatus {
   PENDING
   IN_PROGRESS
@@ -55,6 +60,11 @@ enum ActivityStatus {
 enum EvidenceType {
   FILE
   LINK
+}
+
+enum DictamenVerdict {
+  APPROVED
+  CHANGES_REQUESTED
 }
 
 model User {
@@ -72,10 +82,13 @@ model User {
   ownedProjects        Project[]        @relation("ProjectOwner")
   teachingProjects     Project[]        @relation("ProjectTeacher")
   organizationProjects Project[]        @relation("ProjectOrganization")
+  publishedChallenges  Challenge[]      @relation("ChallengeOrganization")
   teamRequests         TeamRequest[]
-  ownedActivities      Activity[]
+  ownedActivities      Activity[]       @relation("ActivityOwner")
+  assignedActivities   Activity[]       @relation("ActivityAssignee")
   progressUpdates      ProgressUpdate[]
   savedProjects        SavedProject[]
+  dictamenesEmitidos   Dictamen[]       @relation("DictamenEvaluator")
 
   @@map("users")
 }
@@ -85,9 +98,37 @@ model Sdg {
   name     String
   colorHex String
 
-  projects ProjectSdg[]
+  projects   ProjectSdg[]
+  challenges ChallengeSdg[]
 
   @@map("sdgs")
+}
+
+model Challenge {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  deadline    DateTime?
+  createdAt   DateTime  @default(now())
+
+  organizationId Int
+  organization   User @relation("ChallengeOrganization", fields: [organizationId], references: [id])
+
+  sdgs     ChallengeSdg[]
+  projects Project[]
+
+  @@map("challenges")
+}
+
+model ChallengeSdg {
+  challengeId Int
+  sdgId       Int
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  sdg       Sdg       @relation(fields: [sdgId], references: [id])
+
+  @@id([challengeId, sdgId])
+  @@map("challenge_sdgs")
 }
 
 model Project {
@@ -110,13 +151,15 @@ model Project {
   organizationId Int?
   organization   User? @relation("ProjectOrganization", fields: [organizationId], references: [id])
 
-  // challengeId (opcional, -> Challenge) se agrega cuando el módulo de Retos entre al backlog.
+  challengeId Int?
+  challenge   Challenge? @relation(fields: [challengeId], references: [id])
 
   sdgs            ProjectSdg[]
   teamRequests    TeamRequest[]
   activities      Activity[]
   progressUpdates ProgressUpdate[]
   savedBy         SavedProject[]
+  dictamenes      Dictamen[]
 
   @@map("projects")
 }
@@ -133,14 +176,15 @@ model ProjectSdg {
 }
 
 model TeamRequest {
-  id         Int               @id @default(autoincrement())
-  projectId  Int
-  userId     Int
-  role       TeamRequestRole
-  status     TeamRequestStatus @default(PENDING)
-  message    String?
-  createdAt  DateTime          @default(now())
-  resolvedAt DateTime?
+  id          Int                   @id @default(autoincrement())
+  projectId   Int
+  userId      Int
+  role        TeamRequestRole
+  status      TeamRequestStatus    @default(PENDING)
+  initiatedBy TeamRequestInitiator @default(REQUESTER)
+  message     String?
+  createdAt   DateTime              @default(now())
+  resolvedAt  DateTime?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id])
@@ -153,6 +197,7 @@ model Activity {
   id          Int            @id @default(autoincrement())
   projectId   Int
   ownerId     Int
+  assigneeId  Int?
   title       String
   description String?
   dueDate     DateTime
@@ -160,7 +205,8 @@ model Activity {
   createdAt   DateTime       @default(now())
 
   project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  owner           User             @relation(fields: [ownerId], references: [id])
+  owner           User             @relation("ActivityOwner", fields: [ownerId], references: [id])
+  assignee        User?            @relation("ActivityAssignee", fields: [assigneeId], references: [id])
   progressUpdates ProgressUpdate[]
 
   @@map("activities")
@@ -208,4 +254,19 @@ model Evidence {
   progressUpdate ProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
 
   @@map("evidence")
+}
+
+model Dictamen {
+  id          Int             @id @default(autoincrement())
+  projectId   Int
+  evaluatorId Int
+  verdict     DictamenVerdict
+  comment     String
+  createdAt   DateTime        @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  evaluator User    @relation("DictamenEvaluator", fields: [evaluatorId], references: [id])
+
+  @@unique([projectId, evaluatorId])
+  @@map("dictamenes")
 }

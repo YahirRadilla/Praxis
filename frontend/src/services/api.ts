@@ -9,6 +9,7 @@ import type {
 import type { ReceivedTeamRequest, TeamMember, TeamRequest } from "../types/team";
 import type { Activity, FeedUpdate, ProgressUpdate } from "../types/activity";
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
+import type { Dictamen, DictamenVerdict } from "../types/dictamen";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -283,4 +284,20 @@ export function listChallengesRequest(params: ListChallengesParams = {}) {
 
 export function getChallengeRequest(id: number) {
   return request<Challenge>(`/api/challenges/${id}`);
+}
+
+export function createDictamenRequest(
+  token: string,
+  projectId: number,
+  payload: { verdict: DictamenVerdict; comment: string },
+) {
+  return request<Dictamen>(`/api/projects/${projectId}/dictamenes`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function listDictamenesRequest(projectId: number) {
+  return request<Dictamen[]>(`/api/projects/${projectId}/dictamenes`);
 }

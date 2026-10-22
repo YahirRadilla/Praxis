@@ -20,6 +20,11 @@ export const ACTIVITY_STATUS: Record<string, StatusStyle> = {
   OVERDUE: { label: "Atrasada", bg: "#FBE9E7", fg: "#A21942" },
 };
 
+export const DICTAMEN_VERDICT: Record<string, StatusStyle> = {
+  APPROVED: { label: "Aprobado", bg: "#EAF4EA", fg: "#2D5E3A" },
+  CHANGES_REQUESTED: { label: "Requiere ajustes", bg: "#FDF3E0", fg: "#BF8B2E" },
+};
+
 export const CARD_SHADOW =
   "shadow-[0_1px_2px_rgba(20,22,26,0.04),0_10px_28px_-14px_rgba(20,22,26,0.18)]";
 

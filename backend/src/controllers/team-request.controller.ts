@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import {
   createTeamRequestSchema,
+  inviteToTeamSchema,
   respondTeamRequestSchema,
 } from "../schemas/team-request.schema";
 import * as teamRequestService from "../services/team-request.service";
@@ -12,6 +13,20 @@ export async function requestToJoinHandler(req: Request, res: Response, next: Ne
       Number(req.params.projectId),
       req.user!.sub,
       input,
+    );
+    res.status(201).json(request);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function inviteToTeamHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = inviteToTeamSchema.parse(req.body);
+    const request = await teamRequestService.inviteToTeam(
+      Number(req.params.projectId),
+      req.user!.sub,
+      input.userId,
     );
     res.status(201).json(request);
   } catch (error) {
@@ -49,6 +64,15 @@ export async function listReceivedRequestsHandler(req: Request, res: Response, n
   try {
     const requests = await teamRequestService.listReceivedRequests(req.user!.sub);
     res.status(200).json(requests);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listReceivedInvitesHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const invites = await teamRequestService.listReceivedInvites(req.user!.sub);
+    res.status(200).json(invites);
   } catch (error) {
     next(error);
   }

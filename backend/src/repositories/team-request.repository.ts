@@ -1,4 +1,4 @@
-import type { TeamRequestRole, TeamRequestStatus } from "@prisma/client";
+import type { TeamRequestInitiator, TeamRequestRole, TeamRequestStatus } from "@prisma/client";
 import { prisma } from "./prisma-client";
 
 const memberSelect = {
@@ -26,9 +26,10 @@ export function createTeamRequest(
   userId: number,
   role: TeamRequestRole,
   message?: string,
+  initiatedBy: TeamRequestInitiator = "REQUESTER",
 ) {
   return prisma.teamRequest.create({
-    data: { projectId, userId, role, message },
+    data: { projectId, userId, role, message, initiatedBy },
     include: { user: { select: memberSelect } },
   });
 }
@@ -59,6 +60,14 @@ export async function isAcceptedTeamMember(projectId: number, userId: number): P
 export function listPendingRequestsForOwner(ownerId: number) {
   return prisma.teamRequest.findMany({
     where: { status: "PENDING", project: { ownerId } },
+    include: { user: { select: memberSelect }, project: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export function listPendingInvitesForUser(userId: number) {
+  return prisma.teamRequest.findMany({
+    where: { status: "PENDING", userId, initiatedBy: "OWNER" },
     include: { user: { select: memberSelect }, project: { select: { id: true, name: true } } },
     orderBy: { createdAt: "asc" },
   });

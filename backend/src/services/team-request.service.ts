@@ -3,6 +3,7 @@ import {
   createTeamRequest,
   findTeamRequestById,
   findTeamRequestByProjectAndUser,
+  listPendingInvitesForUser,
   listPendingRequestsForOwner,
   listTeamRequestsByProject,
   updateTeamRequestStatus,
@@ -52,6 +53,35 @@ export async function requestToJoin(
   return createTeamRequest(projectId, userId, role, input.message);
 }
 
+export async function inviteToTeam(projectId: number, ownerId: number, targetUserId: number) {
+  const project = await findProjectById(projectId);
+  if (!project) {
+    throw new HttpError(404, "Proyecto no encontrado.");
+  }
+  if (project.ownerId !== ownerId) {
+    throw new HttpError(403, "Solo el responsable del proyecto puede invitar integrantes.");
+  }
+  if (targetUserId === ownerId) {
+    throw new HttpError(409, "Ya eres el responsable de este proyecto.");
+  }
+
+  const existing = await findTeamRequestByProjectAndUser(projectId, targetUserId);
+  if (existing) {
+    if (existing.status === "ACCEPTED") {
+      throw new HttpError(409, "Ya es parte del equipo.");
+    }
+    throw new HttpError(409, "Ya existe una invitación o solicitud pendiente para este usuario.");
+  }
+
+  const targetUser = await findUserById(targetUserId);
+  if (!targetUser) {
+    throw new HttpError(404, "Usuario no encontrado.");
+  }
+  const role = roleForAccountType(targetUser.accountType);
+
+  return createTeamRequest(projectId, targetUserId, role, undefined, "OWNER");
+}
+
 export async function respondToRequest(
   requestId: number,
   actingUserId: number,
@@ -61,9 +91,15 @@ export async function respondToRequest(
   if (!request) {
     throw new HttpError(404, "Solicitud no encontrada.");
   }
-  if (request.project.ownerId !== actingUserId) {
+
+  if (request.initiatedBy === "OWNER") {
+    if (request.userId !== actingUserId) {
+      throw new HttpError(403, "Solo el usuario invitado puede responder a esta invitación.");
+    }
+  } else if (request.project.ownerId !== actingUserId) {
     throw new HttpError(403, "Solo el responsable del proyecto puede resolver solicitudes.");
   }
+
   if (request.status !== "PENDING") {
     throw new HttpError(409, "Esta solicitud ya fue resuelta.");
   }
@@ -85,6 +121,10 @@ export async function listPendingRequests(projectId: number, actingUserId: numbe
 
 export async function listReceivedRequests(ownerId: number) {
   return listPendingRequestsForOwner(ownerId);
+}
+
+export async function listReceivedInvites(userId: number) {
+  return listPendingInvitesForUser(userId);
 }
 
 export async function listTeam(projectId: number, requesterId?: number) {

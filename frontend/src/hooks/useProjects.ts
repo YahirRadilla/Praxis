@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  archiveProjectRequest,
   createProjectRequest,
   getProjectRequest,
   listMyProjectsRequest,
@@ -7,6 +8,7 @@ import {
   publishProjectRequest,
   saveProjectRequest,
   searchProjectsRequest,
+  submitProjectForReviewRequest,
   unsaveProjectRequest,
   updateProjectRequest,
   type UpdateProjectPayload,
@@ -55,6 +57,30 @@ export function usePublishProject(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => publishProjectRequest(token!, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useSubmitForReview(id: number) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => submitProjectForReviewRequest(token!, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useArchiveProject(id: number) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => archiveProjectRequest(token!, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });

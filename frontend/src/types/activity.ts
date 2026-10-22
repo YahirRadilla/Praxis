@@ -5,12 +5,14 @@ export interface Activity {
   id: number;
   projectId: number;
   ownerId: number;
+  assigneeId: number | null;
   title: string;
   description: string | null;
   dueDate: string;
   status: ActivityStatus;
   createdAt: string;
   owner: { id: number; name: string };
+  assignee?: { id: number; name: string } | null;
 }
 
 export interface Evidence {

@@ -124,6 +124,14 @@ export function publishProjectRequest(token: string, id: number) {
   return request<Project>(`/api/projects/${id}/publish`, { method: "POST", token });
 }
 
+export function submitProjectForReviewRequest(token: string, id: number) {
+  return request<Project>(`/api/projects/${id}/submit-review`, { method: "POST", token });
+}
+
+export function archiveProjectRequest(token: string, id: number) {
+  return request<Project>(`/api/projects/${id}/archive`, { method: "POST", token });
+}
+
 export function requestToJoinRequest(token: string, projectId: number, message?: string) {
   return request<TeamRequest>(`/api/projects/${projectId}/team-requests`, {
     method: "POST",
@@ -155,7 +163,7 @@ export function listTeamRequest(projectId: number) {
 export function createActivityRequest(
   token: string,
   projectId: number,
-  payload: { title: string; description?: string; dueDate: string },
+  payload: { title: string; description?: string; dueDate: string; assigneeId?: number },
 ) {
   return request<Activity>(`/api/projects/${projectId}/activities`, {
     method: "POST",
@@ -166,6 +174,19 @@ export function createActivityRequest(
 
 export function listActivitiesRequest(projectId: number) {
   return request<Activity[]>(`/api/projects/${projectId}/activities`);
+}
+
+export function updateActivityStatusRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  status: Activity["status"],
+) {
+  return request<Activity>(`/api/projects/${projectId}/activities/${activityId}`, {
+    method: "PATCH",
+    token,
+    body: { status },
+  });
 }
 
 export function createProgressUpdateRequest(

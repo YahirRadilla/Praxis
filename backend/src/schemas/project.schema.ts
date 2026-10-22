@@ -19,7 +19,6 @@ export const updateProjectSchema = z.object({
   sdgIds: z.array(z.number().int().min(1).max(17)).min(1).optional(),
   teacherId: z.number().int().nullable().optional(),
   organizationId: z.number().int().nullable().optional(),
-  status: z.enum(["DRAFT", "PUBLISHED", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "ARCHIVED"]).optional(),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
 });
 

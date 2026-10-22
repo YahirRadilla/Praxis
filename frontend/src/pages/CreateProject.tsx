@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import StatusPill from "../components/StatusPill";
 import { useSdgs } from "../hooks/useSdgs";
 import { useCreateProject } from "../hooks/useProjects";
+import { useChallenge } from "../hooks/useChallenges";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
@@ -18,6 +19,7 @@ import { CARD_SHADOW, PRIMARY_BUTTON, PROJECT_STATUS } from "../utils/statusStyl
 const SECTIONS = [
   { id: "info", label: "Información del proyecto" },
   { id: "sdgs", label: "Objetivos de Desarrollo Sostenible" },
+  { id: "reto", label: "Reto" },
   { id: "visibilidad", label: "Visibilidad" },
 ];
 
@@ -26,12 +28,19 @@ const FIELD_CLASS =
 
 function CreateProject() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: sdgs, isLoading: loadingSdgs } = useSdgs();
   const createProject = useCreateProject();
   const [activeSection, setActiveSection] = useState("info");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [teacher, setTeacher] = useState<ProjectPersonRef | null>(null);
   const [organization, setOrganization] = useState<ProjectPersonRef | null>(null);
+
+  const queryChallengeId = Number(searchParams.get("challengeId"));
+  const [linkedChallengeId, setLinkedChallengeId] = useState<number | null>(
+    Number.isFinite(queryChallengeId) && queryChallengeId > 0 ? queryChallengeId : null,
+  );
+  const { data: linkedChallenge } = useChallenge(linkedChallengeId ?? NaN);
 
   const {
     register,
@@ -41,8 +50,12 @@ function CreateProject() {
     formState: { errors },
   } = useForm<CreateProjectFormValues>({
     resolver: zodResolver(createProjectFormSchema),
-    defaultValues: { sdgIds: [], visibility: "PUBLIC" },
+    defaultValues: { sdgIds: [], visibility: "PUBLIC", challengeId: linkedChallengeId },
   });
+
+  useEffect(() => {
+    setValue("challengeId", linkedChallengeId);
+  }, [linkedChallengeId, setValue]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -65,6 +78,7 @@ function CreateProject() {
         ...values,
         teacherId: values.teacherId ?? undefined,
         organizationId: values.organizationId ?? undefined,
+        challengeId: values.challengeId ?? undefined,
       },
       {
         onSuccess: (project) => {
@@ -217,6 +231,40 @@ function CreateProject() {
               />
             )}
             <FieldError message={errors.sdgIds?.message as string | undefined} />
+          </section>
+
+          <section
+            id="reto"
+            ref={(el) => {
+              sectionRefs.current.reto = el;
+            }}
+            className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
+          >
+            <div>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Vincular a un reto (opcional)</h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Si tu proyecto responde a un reto publicado por una organización, puedes vincularlo aquí.
+              </p>
+            </div>
+
+            {linkedChallengeId ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-surface-ground px-3.5 py-3">
+                <span className="text-[13px] text-ink">
+                  {linkedChallenge ? linkedChallenge.title : "Cargando reto…"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLinkedChallengeId(null)}
+                  className="text-[12px] font-semibold text-accent-primary cursor-pointer shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <Link to="/retos" className="self-start text-[12.5px] font-semibold text-accent-primary">
+                Elegir un reto existente →
+              </Link>
+            )}
           </section>
 
           <section

@@ -9,6 +9,7 @@ export const createProjectFormSchema = z.object({
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
   teacherId: z.number().int().nullable().optional(),
   organizationId: z.number().int().nullable().optional(),
+  challengeId: z.number().int().nullable().optional(),
 });
 
 export type CreateProjectFormValues = z.infer<typeof createProjectFormSchema>;

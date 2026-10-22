@@ -11,6 +11,9 @@ import MisProyectos from "./pages/MisProyectos";
 import SolicitudesRecibidas from "./pages/SolicitudesRecibidas";
 import Equipos from "./pages/Equipos";
 import Guardados from "./pages/Guardados";
+import Retos from "./pages/Retos";
+import RetoDetalle from "./pages/RetoDetalle";
+import CrearReto from "./pages/CrearReto";
 import RequireAuth from "./components/RequireAuth";
 
 function App() {
@@ -76,6 +79,16 @@ function App() {
           }
         />
         <Route path="/explorar" element={<Explore />} />
+        <Route path="/retos" element={<Retos />} />
+        <Route path="/retos/:id" element={<RetoDetalle />} />
+        <Route
+          path="/retos/nuevo"
+          element={
+            <RequireAuth>
+              <CrearReto />
+            </RequireAuth>
+          }
+        />
         <Route path="/proyectos/:id" element={<ProjectDetail />} />
         <Route
           path="/proyectos/:id/editar"

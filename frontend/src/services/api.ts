@@ -8,6 +8,7 @@ import type {
 } from "../types/project";
 import type { ReceivedTeamRequest, TeamMember, TeamRequest } from "../types/team";
 import type { Activity, FeedUpdate, ProgressUpdate } from "../types/activity";
+import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -111,9 +112,12 @@ export function getProjectRequest(id: number) {
   return request<Project>(`/api/projects/${id}`);
 }
 
-export type UpdateProjectPayload = Partial<Omit<CreateProjectPayload, "teacherId" | "organizationId">> & {
+export type UpdateProjectPayload = Partial<
+  Omit<CreateProjectPayload, "teacherId" | "organizationId" | "challengeId">
+> & {
   teacherId?: number | null;
   organizationId?: number | null;
+  challengeId?: number | null;
 };
 
 export function updateProjectRequest(token: string, id: number, payload: UpdateProjectPayload) {
@@ -248,4 +252,18 @@ export function listReceivedInvitesRequest(token: string) {
 
 export function searchUsersRequest(token: string, params: { accountType?: string; q?: string }) {
   return request<ProjectPersonRef[]>("/api/users", { token, query: params });
+}
+
+export function createChallengeRequest(token: string, payload: CreateChallengePayload) {
+  return request<Challenge>("/api/challenges", { method: "POST", token, body: payload });
+}
+
+export function listChallengesRequest(params: ListChallengesParams = {}) {
+  return request<Challenge[]>("/api/challenges", {
+    query: { sdgIds: params.sdgIds?.length ? params.sdgIds.join(",") : undefined },
+  });
+}
+
+export function getChallengeRequest(id: number) {
+  return request<Challenge>(`/api/challenges/${id}`);
 }

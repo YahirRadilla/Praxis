@@ -38,6 +38,7 @@ export interface Project {
   teacher: ProjectPersonRef | null;
   organization: ProjectPersonRef | null;
   sdgs: { projectId: number; sdgId: number; sdg: Sdg }[];
+  challenge: { id: number; title: string } | null;
 }
 
 export interface CreateProjectPayload {
@@ -49,6 +50,7 @@ export interface CreateProjectPayload {
   teacherId?: number;
   organizationId?: number;
   visibility?: ProjectVisibility;
+  challengeId?: number;
 }
 
 export interface SearchProjectsParams {

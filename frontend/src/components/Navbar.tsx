@@ -93,6 +93,14 @@ function Navbar() {
         >
           Mis proyectos
         </NavLink>
+        <NavLink
+          to="/retos"
+          className={({ isActive }) =>
+            `text-[13px] ${isActive ? "font-semibold text-ink" : "text-ink-soft hover:text-ink"}`
+          }
+        >
+          Retos
+        </NavLink>
         {isAuthenticated && user ? (
           <div className="relative" ref={menuRef}>
             <button

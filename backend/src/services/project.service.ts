@@ -8,6 +8,7 @@ import {
   type CreateProjectData,
 } from "../repositories/project.repository";
 import { isAcceptedTeamMember } from "../repositories/team-request.repository";
+import { findChallengeById } from "../repositories/challenge.repository";
 import { HttpError } from "../types/http-error";
 import type {
   CreateProjectInput,
@@ -16,6 +17,13 @@ import type {
 } from "../schemas/project.schema";
 
 export async function createProject(ownerId: number, input: CreateProjectInput) {
+  if (input.challengeId !== undefined) {
+    const challenge = await findChallengeById(input.challengeId);
+    if (!challenge) {
+      throw new HttpError(404, "Reto no encontrado.");
+    }
+  }
+
   const data: CreateProjectData = { ownerId, ...input };
   return createProjectRepo(data);
 }

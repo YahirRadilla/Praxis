@@ -5,6 +5,7 @@ export const projectInclude = {
   owner: { select: { id: true, name: true, email: true, accountType: true } },
   teacher: { select: { id: true, name: true, email: true, accountType: true } },
   organization: { select: { id: true, name: true, email: true, accountType: true } },
+  challenge: { select: { id: true, title: true } },
   sdgs: { include: { sdg: true } },
 } satisfies Prisma.ProjectInclude;
 
@@ -16,6 +17,7 @@ export interface CreateProjectData {
   ownerId: number;
   teacherId?: number;
   organizationId?: number;
+  challengeId?: number;
   sdgIds: number[];
   visibility?: ProjectVisibility;
 }

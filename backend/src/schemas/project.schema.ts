@@ -8,6 +8,7 @@ export const createProjectSchema = z.object({
   sdgIds: z.array(z.number().int().min(1).max(17)).min(1, "Selecciona al menos un ODS"),
   teacherId: z.number().int().optional(),
   organizationId: z.number().int().optional(),
+  challengeId: z.number().int().optional(),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
 });
 

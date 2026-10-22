@@ -1,8 +1,67 @@
-import type { ProgressUpdate } from "../types/activity";
+import type { Evidence, ProgressUpdate } from "../types/activity";
 import { CARD_SHADOW } from "../utils/statusStyles";
+import { FileText } from "@phosphor-icons/react";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+const VIDEO_EXTENSIONS = [".mp4"];
+
+function extensionOf(ev: Evidence): string {
+  const source = ev.fileName ?? ev.url;
+  const match = source.toLowerCase().match(/\.[a-z0-9]+$/);
+  return match ? match[0] : "";
+}
+
+export function EvidenceItem({ ev }: { ev: Evidence }) {
+  if (ev.type === "FILE") {
+    const ext = extensionOf(ev);
+
+    if (IMAGE_EXTENSIONS.includes(ext)) {
+      return (
+        <a href={ev.url} target="_blank" rel="noreferrer" className="shrink-0">
+          <img
+            src={ev.url}
+            alt={ev.fileName ?? "Evidencia"}
+            className="w-24 h-24 object-cover rounded-lg border border-rule"
+          />
+        </a>
+      );
+    }
+
+    if (VIDEO_EXTENSIONS.includes(ext)) {
+      return (
+        <video controls src={ev.url} className="max-w-[260px] rounded-lg border border-rule">
+          Tu navegador no soporta la reproducción de video.
+        </video>
+      );
+    }
+
+    return (
+      <a
+        href={ev.url}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-1.5 bg-paper border border-rule rounded-lg px-3 py-2 font-data text-[11.5px] text-ink-soft"
+      >
+        <FileText size={14} />
+        {ev.fileName ?? ev.url}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={ev.url}
+      target="_blank"
+      rel="noreferrer"
+      className="bg-paper border border-rule rounded-lg px-3 py-2 font-data text-[11.5px] text-ink-soft"
+    >
+      {ev.fileName ?? ev.url}
+    </a>
+  );
 }
 
 function ProgressUpdateCard({ update }: { update: ProgressUpdate }) {
@@ -37,15 +96,7 @@ function ProgressUpdateCard({ update }: { update: ProgressUpdate }) {
       {update.evidence.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           {update.evidence.map((ev) => (
-            <a
-              key={ev.id}
-              href={ev.url}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-paper border border-rule rounded-lg px-3 py-2 font-data text-[11.5px] text-ink-soft"
-            >
-              {ev.fileName ?? ev.url}
-            </a>
+            <EvidenceItem key={ev.id} ev={ev} />
           ))}
         </div>
       )}

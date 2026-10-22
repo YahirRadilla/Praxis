@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createProgressUpdateRequest, listProgressUpdatesRequest } from "../services/api";
+import { createProgressUpdateRequest, listProgressUpdatesRequest, uploadFileRequest } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export function useProgressUpdates(projectId: number) {
@@ -21,6 +21,13 @@ export function useCreateProgressUpdate(projectId: number) {
       evidence?: { type: "FILE" | "LINK"; url: string; fileName?: string }[];
     }) => createProgressUpdateRequest(token!, projectId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["progress-updates", projectId] }),
+  });
+}
+
+export function useUploadFile() {
+  const { token } = useAuth();
+  return useMutation({
+    mutationFn: (file: File) => uploadFileRequest(token!, file),
   });
 }
 

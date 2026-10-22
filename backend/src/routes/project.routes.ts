@@ -19,6 +19,7 @@ import {
 import { teamRoutes } from "./team.routes";
 import { activityRoutes } from "./activity.routes";
 import { progressUpdateRoutes } from "./progress-update.routes";
+import { dictamenRoutes } from "./dictamen.routes";
 
 export const projectRoutes = Router();
 
@@ -38,3 +39,4 @@ projectRoutes.get("/:projectId/team", optionalAuth, listTeamHandler);
 projectRoutes.use("/:projectId/team-requests", teamRoutes);
 projectRoutes.use("/:projectId/activities", activityRoutes);
 projectRoutes.use("/:projectId/progress-updates", progressUpdateRoutes);
+projectRoutes.use("/:projectId/dictamenes", dictamenRoutes);

@@ -18,7 +18,10 @@ export async function createProgressUpdateHandler(req: Request, res: Response, n
 
 export async function listProgressUpdatesHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const updates = await progressUpdateService.listProgressUpdates(Number(req.params.projectId));
+    const updates = await progressUpdateService.listProgressUpdates(
+      Number(req.params.projectId),
+      req.user?.sub,
+    );
     res.status(200).json(updates);
   } catch (error) {
     next(error);

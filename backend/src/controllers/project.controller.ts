@@ -37,7 +37,7 @@ export async function listMyProjectsHandler(req: Request, res: Response, next: N
 
 export async function getProjectHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const project = await projectService.getProject(Number(req.params.id));
+    const project = await projectService.getProject(Number(req.params.id), req.user?.sub);
     res.status(200).json(project);
   } catch (error) {
     next(error);
@@ -57,6 +57,24 @@ export async function updateProjectHandler(req: Request, res: Response, next: Ne
 export async function publishProjectHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const project = await projectService.publishProject(Number(req.params.id), req.user!.sub);
+    res.status(200).json(project);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function submitForReviewHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const project = await projectService.submitProjectForReview(Number(req.params.id), req.user!.sub);
+    res.status(200).json(project);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function archiveProjectHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const project = await projectService.archiveProject(Number(req.params.id), req.user!.sub);
     res.status(200).json(project);
   } catch (error) {
     next(error);

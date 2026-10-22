@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { optionalAuth, requireAuth } from "../middleware/auth.middleware";
 import {
   createProgressUpdateHandler,
   listProgressUpdatesHandler,
@@ -8,4 +8,4 @@ import {
 export const progressUpdateRoutes = Router({ mergeParams: true });
 
 progressUpdateRoutes.post("/", requireAuth, createProgressUpdateHandler);
-progressUpdateRoutes.get("/", listProgressUpdatesHandler);
+progressUpdateRoutes.get("/", optionalAuth, listProgressUpdatesHandler);

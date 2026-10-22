@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
-import { createTeamRequestSchema, respondTeamRequestSchema } from "../schemas/team-request.schema";
+import {
+  createTeamRequestSchema,
+  respondTeamRequestSchema,
+} from "../schemas/team-request.schema";
 import * as teamRequestService from "../services/team-request.service";
 
 export async function requestToJoinHandler(req: Request, res: Response, next: NextFunction) {
@@ -53,7 +56,7 @@ export async function listReceivedRequestsHandler(req: Request, res: Response, n
 
 export async function listTeamHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const team = await teamRequestService.listTeam(Number(req.params.projectId));
+    const team = await teamRequestService.listTeam(Number(req.params.projectId), req.user?.sub);
     res.status(200).json(team);
   } catch (error) {
     next(error);

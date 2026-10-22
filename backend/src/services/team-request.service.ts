@@ -9,6 +9,7 @@ import {
 } from "../repositories/team-request.repository";
 import { findProjectById } from "../repositories/project.repository";
 import { findUserById } from "../repositories/user.repository";
+import { assertProjectReadable } from "./project.service";
 import { HttpError } from "../types/http-error";
 import type { CreateTeamRequestInput } from "../schemas/team-request.schema";
 
@@ -86,11 +87,12 @@ export async function listReceivedRequests(ownerId: number) {
   return listPendingRequestsForOwner(ownerId);
 }
 
-export async function listTeam(projectId: number) {
+export async function listTeam(projectId: number, requesterId?: number) {
   const project = await findProjectById(projectId);
   if (!project) {
     throw new HttpError(404, "Proyecto no encontrado.");
   }
+  await assertProjectReadable(project, requesterId);
 
   const accepted = await listTeamRequestsByProject(projectId, "ACCEPTED");
 

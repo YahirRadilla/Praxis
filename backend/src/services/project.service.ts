@@ -1,3 +1,4 @@
+import type { Project } from "@prisma/client";
 import {
   createProject as createProjectRepo,
   findProjectById,
@@ -6,6 +7,7 @@ import {
   updateProject as updateProjectRepo,
   type CreateProjectData,
 } from "../repositories/project.repository";
+import { isAcceptedTeamMember } from "../repositories/team-request.repository";
 import { HttpError } from "../types/http-error";
 import type {
   CreateProjectInput,
@@ -18,11 +20,25 @@ export async function createProject(ownerId: number, input: CreateProjectInput) 
   return createProjectRepo(data);
 }
 
-export async function getProject(id: number) {
+export async function assertProjectReadable(project: Project, requesterId?: number) {
+  const isPubliclyVisible = project.status !== "DRAFT" && project.visibility === "PUBLIC";
+  if (isPubliclyVisible) return;
+
+  const isOwner = requesterId !== undefined && project.ownerId === requesterId;
+  const isMember =
+    requesterId !== undefined && !isOwner && (await isAcceptedTeamMember(project.id, requesterId));
+
+  if (!isOwner && !isMember) {
+    throw new HttpError(404, "Proyecto no encontrado.");
+  }
+}
+
+export async function getProject(id: number, requesterId?: number) {
   const project = await findProjectById(id);
   if (!project) {
     throw new HttpError(404, "Proyecto no encontrado.");
   }
+  await assertProjectReadable(project, requesterId);
   return project;
 }
 
@@ -56,4 +72,20 @@ export async function publishProject(id: number, userId: number) {
     throw new HttpError(409, "El proyecto ya fue publicado.");
   }
   return updateProjectRepo(id, { status: "PUBLISHED" });
+}
+
+export async function submitProjectForReview(id: number, userId: number) {
+  const project = await requireOwnedProject(id, userId);
+  if (project.status !== "PUBLISHED") {
+    throw new HttpError(409, "Solo se puede enviar a evaluación un proyecto publicado.");
+  }
+  return updateProjectRepo(id, { status: "IN_REVIEW" });
+}
+
+export async function archiveProject(id: number, userId: number) {
+  const project = await requireOwnedProject(id, userId);
+  if (project.status !== "IN_REVIEW") {
+    throw new HttpError(409, "Solo se puede archivar un proyecto en evaluación.");
+  }
+  return updateProjectRepo(id, { status: "ARCHIVED" });
 }

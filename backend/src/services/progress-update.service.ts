@@ -5,6 +5,7 @@ import {
 } from "../repositories/progress-update.repository";
 import { findProjectById } from "../repositories/project.repository";
 import { isProjectMember } from "./team-request.service";
+import { assertProjectReadable } from "./project.service";
 import { HttpError } from "../types/http-error";
 import type { CreateProgressUpdateInput } from "../schemas/progress-update.schema";
 
@@ -26,7 +27,13 @@ export async function addProgressUpdate(
   return createProgressUpdate({ projectId, authorId: userId, ...input });
 }
 
-export async function listProgressUpdates(projectId: number) {
+export async function listProgressUpdates(projectId: number, requesterId?: number) {
+  const project = await findProjectById(projectId);
+  if (!project) {
+    throw new HttpError(404, "Proyecto no encontrado.");
+  }
+  await assertProjectReadable(project, requesterId);
+
   return listProgressUpdatesByProject(projectId);
 }
 

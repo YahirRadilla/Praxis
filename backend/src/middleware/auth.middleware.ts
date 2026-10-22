@@ -24,3 +24,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     res.status(401).json({ message: "Token inválido o expirado." });
   }
 }
+
+export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
+
+  if (!token) {
+    next();
+    return;
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    next();
+    return;
+  }
+
+  try {
+    req.user = jwt.verify(token, secret) as unknown as AppJwtPayload;
+  } catch {
+    // Token inválido o expirado: continuar sin usuario autenticado.
+  }
+  next();
+}

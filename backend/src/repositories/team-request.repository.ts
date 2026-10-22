@@ -49,6 +49,13 @@ export function listTeamRequestsByProject(projectId: number, status?: TeamReques
   });
 }
 
+export async function isAcceptedTeamMember(projectId: number, userId: number): Promise<boolean> {
+  const request = await prisma.teamRequest.findUnique({
+    where: { projectId_userId: { projectId, userId } },
+  });
+  return request?.status === "ACCEPTED";
+}
+
 export function listPendingRequestsForOwner(ownerId: number) {
   return prisma.teamRequest.findMany({
     where: { status: "PENDING", project: { ownerId } },

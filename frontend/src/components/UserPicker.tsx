@@ -5,7 +5,7 @@ import { useSearchUsers } from "../hooks/useUsers";
 import { CARD_SHADOW } from "../utils/statusStyles";
 
 interface UserPickerProps {
-  accountType: "TEACHER" | "ORGANIZATION";
+  accountType?: "TEACHER" | "ORGANIZATION";
   label: string;
   placeholder: string;
   value: ProjectPersonRef | null;

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  inviteToTeamRequest,
   listPendingRequestsRequest,
+  listReceivedInvitesRequest,
   listReceivedRequestsRequest,
   listTeamRequest,
   requestToJoinRequest,
@@ -34,6 +36,15 @@ export function useRequestToJoin(projectId: number) {
   });
 }
 
+export function useInviteToTeam(projectId: number) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) => inviteToTeamRequest(token!, projectId, userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["team-requests", projectId] }),
+  });
+}
+
 export function useRespondToRequest(projectId: number) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -57,6 +68,15 @@ export function useReceivedRequests() {
   });
 }
 
+export function useReceivedInvites() {
+  const { token, isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["team-requests", "received-invites"],
+    queryFn: () => listReceivedInvitesRequest(token!),
+    enabled: isAuthenticated,
+  });
+}
+
 export function useRespondToReceivedRequest() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -65,6 +85,7 @@ export function useRespondToReceivedRequest() {
       respondToRequestRequest(token!, requestId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-requests", "received"] });
+      queryClient.invalidateQueries({ queryKey: ["team-requests", "received-invites"] });
       queryClient.invalidateQueries({ queryKey: ["team"] });
     },
   });

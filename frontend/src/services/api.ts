@@ -144,6 +144,14 @@ export function listPendingRequestsRequest(token: string, projectId: number) {
   return request<TeamRequest[]>(`/api/projects/${projectId}/team-requests`, { token });
 }
 
+export function inviteToTeamRequest(token: string, projectId: number, userId: number) {
+  return request<TeamRequest>(`/api/projects/${projectId}/team-requests/invite`, {
+    method: "POST",
+    token,
+    body: { userId },
+  });
+}
+
 export function respondToRequestRequest(
   token: string,
   requestId: number,
@@ -232,6 +240,10 @@ export function unsaveProjectRequest(token: string, projectId: number) {
 
 export function listReceivedRequestsRequest(token: string) {
   return request<ReceivedTeamRequest[]>("/api/team-requests/received", { token });
+}
+
+export function listReceivedInvitesRequest(token: string) {
+  return request<ReceivedTeamRequest[]>("/api/team-invites/received", { token });
 }
 
 export function searchUsersRequest(token: string, params: { accountType?: string; q?: string }) {

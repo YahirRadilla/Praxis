@@ -2,11 +2,12 @@ import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import SidebarNav from "../components/feed/SidebarNav";
 import TeamRequestRow from "../components/team/TeamRequestRow";
-import { useReceivedRequests, useRespondToReceivedRequest } from "../hooks/useTeam";
+import { useReceivedInvites, useReceivedRequests, useRespondToReceivedRequest } from "../hooks/useTeam";
 import { getErrorMessage } from "../services/api";
 
 function SolicitudesRecibidas() {
   const { data: requests, isLoading } = useReceivedRequests();
+  const { data: invites, isLoading: isLoadingInvites } = useReceivedInvites();
   const respond = useRespondToReceivedRequest();
 
   function handleRespond(requestId: number, status: "ACCEPTED" | "REJECTED") {
@@ -44,6 +45,25 @@ function SolicitudesRecibidas() {
                 projectName={req.project.name}
                 onAccept={() => handleRespond(req.id, "ACCEPTED")}
                 onReject={() => handleRespond(req.id, "REJECTED")}
+              />
+            ))}
+          </div>
+
+          <h2 className="font-heading text-[16px] font-bold text-ink m-0 mt-4">Invitaciones recibidas</h2>
+
+          {isLoadingInvites && <p className="text-[13px] text-ink-soft">Cargando…</p>}
+          {!isLoadingInvites && invites?.length === 0 && (
+            <p className="text-[13px] text-ink-soft">No tienes invitaciones pendientes.</p>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {invites?.map((invite) => (
+              <TeamRequestRow
+                key={invite.id}
+                request={invite}
+                projectName={invite.project.name}
+                onAccept={() => handleRespond(invite.id, "ACCEPTED")}
+                onReject={() => handleRespond(invite.id, "REJECTED")}
               />
             ))}
           </div>

@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import ProjectHeaderBand from "../components/ProjectHeaderBand";
@@ -7,20 +7,37 @@ import ActivityRow from "../components/ActivityRow";
 import ProgressUpdateCard from "../components/ProgressUpdateCard";
 import TeamMemberRow from "../components/team/TeamMemberRow";
 import TeamRequestRow from "../components/team/TeamRequestRow";
+import UserPicker from "../components/UserPicker";
+import type { ProjectPersonRef } from "../types/project";
+import type { DictamenVerdict } from "../types/dictamen";
 import { useAuth } from "../context/AuthContext";
 import {
+  useArchiveProject,
   useProject,
   usePublishProject,
   useSavedProjects,
   useSaveProject,
+  useSubmitForReview,
   useUnsaveProject,
 } from "../hooks/useProjects";
-import { useTeam, usePendingRequests, useRequestToJoin, useRespondToRequest } from "../hooks/useTeam";
-import { useActivities, useCreateActivity } from "../hooks/useActivities";
-import { useProgressUpdates, useCreateProgressUpdate } from "../hooks/useProgressUpdates";
+import {
+  useTeam,
+  usePendingRequests,
+  useRequestToJoin,
+  useRespondToRequest,
+  useInviteToTeam,
+} from "../hooks/useTeam";
+import {
+  useActivities,
+  useCreateActivity,
+  useUpdateActivityStatus,
+  type SettableActivityStatus,
+} from "../hooks/useActivities";
+import { useProgressUpdates, useCreateProgressUpdate, useUploadFile } from "../hooks/useProgressUpdates";
+import { useDictamenes, useCreateDictamen } from "../hooks/useDictamenes";
 import { getErrorMessage } from "../services/api";
 import StatusPill from "../components/StatusPill";
-import { CARD_SHADOW, PRIMARY_BUTTON, PROJECT_STATUS, ACTIVITY_STATUS } from "../utils/statusStyles";
+import { CARD_SHADOW, PRIMARY_BUTTON, PROJECT_STATUS, ACTIVITY_STATUS, DICTAMEN_VERDICT } from "../utils/statusStyles";
 import { pluralize, timeAgo } from "../utils/text";
 import { avatarColorFor } from "../utils/avatarColor";
 import { CheckCircle, Circle, WarningCircle } from "@phosphor-icons/react";
@@ -59,21 +76,35 @@ function ProjectDetail() {
   const { data: pending } = usePendingRequests(projectId);
   const { data: activities } = useActivities(projectId);
   const { data: progressUpdates } = useProgressUpdates(projectId);
+  const { data: dictamenes } = useDictamenes(projectId);
 
   const publishProject = usePublishProject(projectId);
+  const submitForReview = useSubmitForReview(projectId);
+  const archiveProject = useArchiveProject(projectId);
   const requestToJoin = useRequestToJoin(projectId);
   const respondToRequest = useRespondToRequest(projectId);
+  const inviteToTeam = useInviteToTeam(projectId);
   const createActivity = useCreateActivity(projectId);
+  const updateActivityStatus = useUpdateActivityStatus(projectId);
   const createProgressUpdate = useCreateProgressUpdate(projectId);
+  const uploadFile = useUploadFile();
+  const createDictamen = useCreateDictamen(projectId);
   const { data: savedProjects } = useSavedProjects();
   const saveProject = useSaveProject();
   const unsaveProject = useUnsaveProject();
 
   const [activityTitle, setActivityTitle] = useState("");
   const [activityDueDate, setActivityDueDate] = useState("");
+  const [activityAssigneeId, setActivityAssigneeId] = useState("");
   const [progressText, setProgressText] = useState("");
+  const [progressActivityId, setProgressActivityId] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [evidenceMode, setEvidenceMode] = useState<"link" | "file">("link");
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; fileName: string } | null>(null);
   const [showProgressForm, setShowProgressForm] = useState(false);
+  const [inviteUser, setInviteUser] = useState<ProjectPersonRef | null>(null);
+  const [dictamenVerdict, setDictamenVerdict] = useState<DictamenVerdict>("APPROVED");
+  const [dictamenComment, setDictamenComment] = useState("");
 
   if (isLoading || !project) {
     return (
@@ -89,6 +120,10 @@ function ProjectDetail() {
   const doneCount = activities?.filter((a) => a.status === "DONE").length ?? 0;
   const totalEvidence = progressUpdates?.reduce((acc, u) => acc + u.evidence.length, 0) ?? 0;
   const isSaved = !!savedProjects?.some((p) => p.id === project.id);
+  const isEvaluator =
+    !!user && (user.id === project.teacher?.id || user.id === project.organization?.id);
+  const hasSubmittedDictamen = !!dictamenes?.some((d) => d.evaluator.id === user?.id);
+  const canSubmitDictamen = project.status === "IN_REVIEW" && isEvaluator && !hasSubmittedDictamen;
 
   function handlePublish() {
     publishProject.mutate(undefined, {
@@ -97,10 +132,35 @@ function ProjectDetail() {
     });
   }
 
+  function handleSubmitForReview() {
+    submitForReview.mutate(undefined, {
+      onSuccess: () => toast.success("Proyecto enviado a evaluación"),
+      onError: (error) => toast.error(getErrorMessage(error, "No se pudo enviar a evaluación.")),
+    });
+  }
+
+  function handleArchive() {
+    archiveProject.mutate(undefined, {
+      onSuccess: () => toast.success("Proyecto archivado"),
+      onError: (error) => toast.error(getErrorMessage(error, "No se pudo archivar.")),
+    });
+  }
+
   function handleRequestToJoin() {
     requestToJoin.mutate(undefined, {
       onSuccess: () => toast.success("Solicitud enviada"),
       onError: (error) => toast.error(getErrorMessage(error, "No se pudo enviar la solicitud.")),
+    });
+  }
+
+  function handleInvite() {
+    if (!inviteUser) return;
+    inviteToTeam.mutate(inviteUser.id, {
+      onSuccess: () => {
+        toast.success("Invitación enviada");
+        setInviteUser(null);
+      },
+      onError: (error) => toast.error(getErrorMessage(error, "No se pudo enviar la invitación.")),
     });
   }
 
@@ -117,14 +177,28 @@ function ProjectDetail() {
   function handleCreateActivity(e: FormEvent) {
     e.preventDefault();
     createActivity.mutate(
-      { title: activityTitle, dueDate: activityDueDate },
+      {
+        title: activityTitle,
+        dueDate: activityDueDate,
+        assigneeId: activityAssigneeId ? Number(activityAssigneeId) : undefined,
+      },
       {
         onSuccess: () => {
           toast.success("Actividad creada");
           setActivityTitle("");
           setActivityDueDate("");
+          setActivityAssigneeId("");
         },
         onError: (error) => toast.error(getErrorMessage(error, "No se pudo crear la actividad.")),
+      },
+    );
+  }
+
+  function handleAdvanceActivityStatus(activityId: number, status: SettableActivityStatus) {
+    updateActivityStatus.mutate(
+      { activityId, status },
+      {
+        onError: (error) => toast.error(getErrorMessage(error, "No se pudo actualizar la actividad.")),
       },
     );
   }
@@ -135,16 +209,52 @@ function ProjectDetail() {
       {
         text: progressText,
         postedToFeed: true,
-        evidence: evidenceUrl ? [{ type: "LINK", url: evidenceUrl }] : undefined,
+        activityId: progressActivityId ? Number(progressActivityId) : undefined,
+        evidence: uploadedFile
+          ? [{ type: "FILE", url: uploadedFile.url, fileName: uploadedFile.fileName }]
+          : evidenceUrl
+            ? [{ type: "LINK", url: evidenceUrl }]
+            : undefined,
       },
       {
         onSuccess: () => {
           toast.success("Avance registrado");
           setProgressText("");
           setEvidenceUrl("");
+          setUploadedFile(null);
+          setEvidenceMode("link");
+          setProgressActivityId("");
           setShowProgressForm(false);
         },
         onError: (error) => toast.error(getErrorMessage(error, "No se pudo registrar el avance.")),
+      },
+    );
+  }
+
+  function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    uploadFile.mutate(file, {
+      onSuccess: (data) => setUploadedFile(data),
+      onError: (error) => {
+        toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
+        setUploadedFile(null);
+        e.target.value = "";
+      },
+    });
+  }
+
+  function handleCreateDictamen(e: FormEvent) {
+    e.preventDefault();
+    createDictamen.mutate(
+      { verdict: dictamenVerdict, comment: dictamenComment },
+      {
+        onSuccess: () => {
+          toast.success("Dictamen enviado");
+          setDictamenVerdict("APPROVED");
+          setDictamenComment("");
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "No se pudo enviar el dictamen.")),
       },
     );
   }
@@ -180,6 +290,26 @@ function ProjectDetail() {
           className={`rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
         >
           {publishProject.isPending ? "Publicando…" : "Publicar proyecto"}
+        </button>
+      )}
+      {isOwner && project.status === "PUBLISHED" && (
+        <button
+          type="button"
+          onClick={handleSubmitForReview}
+          disabled={submitForReview.isPending}
+          className={`rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+        >
+          {submitForReview.isPending ? "Enviando…" : "Enviar a evaluación"}
+        </button>
+      )}
+      {isOwner && project.status === "IN_REVIEW" && (
+        <button
+          type="button"
+          onClick={handleArchive}
+          disabled={archiveProject.isPending}
+          className={`rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+        >
+          {archiveProject.isPending ? "Archivando…" : "Archivar"}
         </button>
       )}
       {isAuthenticated && !isOwner && !isMember && (
@@ -339,6 +469,85 @@ function ProjectDetail() {
                     <span className="text-ink">{project.organization.name}</span>
                   </p>
                 )}
+                <p className="text-[12.5px] m-0">
+                  <span className="text-ink-faint">Reto vinculado: </span>
+                  {project.challenge ? (
+                    <Link to={`/retos/${project.challenge.id}`} className="text-accent-primary font-semibold">
+                      {project.challenge.title}
+                    </Link>
+                  ) : (
+                    <span className="text-ink">Ninguno</span>
+                  )}
+                </p>
+              </LateralCard>
+
+              <LateralCard title="Dictamen">
+                {dictamenes && dictamenes.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {dictamenes.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex flex-col gap-1.5 border-b border-rule pb-3 last:border-0 last:pb-0"
+                      >
+                        <StatusPill
+                          status={DICTAMEN_VERDICT[d.verdict] ?? DICTAMEN_VERDICT.APPROVED}
+                          className="self-start"
+                        />
+                        <p className="text-[12.5px] text-ink-soft leading-relaxed m-0">{d.comment}</p>
+                        <p className="text-[11px] text-ink-faint m-0">
+                          {d.evaluator.name} ·{" "}
+                          {new Date(d.createdAt).toLocaleDateString("es-MX", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12.5px] text-ink-faint m-0">Todavía no hay un dictamen.</p>
+                )}
+
+                {canSubmitDictamen && (
+                  <form onSubmit={handleCreateDictamen} className="flex flex-col gap-2 pt-2 border-t border-rule">
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-1.5 text-[12px] text-ink cursor-pointer">
+                        <input
+                          type="radio"
+                          name="dictamenVerdict"
+                          checked={dictamenVerdict === "APPROVED"}
+                          onChange={() => setDictamenVerdict("APPROVED")}
+                        />
+                        Aprobado
+                      </label>
+                      <label className="flex items-center gap-1.5 text-[12px] text-ink cursor-pointer">
+                        <input
+                          type="radio"
+                          name="dictamenVerdict"
+                          checked={dictamenVerdict === "CHANGES_REQUESTED"}
+                          onChange={() => setDictamenVerdict("CHANGES_REQUESTED")}
+                        />
+                        Requiere ajustes
+                      </label>
+                    </div>
+                    <textarea
+                      value={dictamenComment}
+                      onChange={(e) => setDictamenComment(e.target.value)}
+                      required
+                      placeholder="Comentario"
+                      rows={3}
+                      className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={createDictamen.isPending}
+                      className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+                    >
+                      {createDictamen.isPending ? "Enviando…" : "Enviar dictamen"}
+                    </button>
+                  </form>
+                )}
               </LateralCard>
 
               <LateralCard title="Equipo">
@@ -401,9 +610,20 @@ function ProjectDetail() {
           <>
             <section className="flex-1 min-w-0 flex flex-col gap-2">
               <div className={`bg-paper-raised border border-rule rounded-xl overflow-hidden ${CARD_SHADOW}`}>
-                {activities?.map((activity) => (
-                  <ActivityRow key={activity.id} activity={activity} />
-                ))}
+                {activities?.map((activity) => {
+                  const assignee =
+                    activity.assignee ?? team?.find((m) => m.id === activity.assigneeId) ?? null;
+                  return (
+                    <ActivityRow
+                      key={activity.id}
+                      activity={assignee ? { ...activity, assignee } : activity}
+                      canAct={isMember}
+                      isPending={updateActivityStatus.isPending}
+                      onAdvanceStatus={(status) => handleAdvanceActivityStatus(activity.id, status)}
+                      progressUpdates={progressUpdates?.filter((u) => u.activityId === activity.id)}
+                    />
+                  );
+                })}
                 {activities?.length === 0 && (
                   <p className="text-[13px] text-ink-soft p-4 m-0">Todavía no hay actividades.</p>
                 )}
@@ -426,6 +646,19 @@ function ProjectDetail() {
                     onChange={(e) => setActivityDueDate(e.target.value)}
                     className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
                   />
+                  <select
+                    value={activityAssigneeId}
+                    onChange={(e) => setActivityAssigneeId(e.target.value)}
+                    aria-label="Responsable (opcional)"
+                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                  >
+                    <option value="">Sin asignar</option>
+                    {team?.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="submit"
                     disabled={createActivity.isPending}
@@ -486,16 +719,71 @@ function ProjectDetail() {
                     placeholder="¿Qué avanzaste?"
                     className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
                   />
-                  <input
-                    type="url"
-                    value={evidenceUrl}
-                    onChange={(e) => setEvidenceUrl(e.target.value)}
-                    placeholder="Enlace a evidencia (opcional)"
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-1 self-start rounded-full bg-surface-ground p-1">
+                      <button
+                        type="button"
+                        onClick={() => setEvidenceMode("link")}
+                        className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
+                          evidenceMode === "link" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
+                        }`}
+                      >
+                        Agregar un link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEvidenceMode("file")}
+                        className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
+                          evidenceMode === "file" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
+                        }`}
+                      >
+                        Subir un archivo
+                      </button>
+                    </div>
+
+                    {evidenceMode === "link" ? (
+                      <input
+                        type="url"
+                        value={evidenceUrl}
+                        onChange={(e) => setEvidenceUrl(e.target.value)}
+                        placeholder="Enlace a evidencia (opcional)"
+                        className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,video/mp4"
+                          onChange={handleFileSelected}
+                          className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                        />
+                        {uploadFile.isPending && (
+                          <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
+                        )}
+                        {uploadedFile && !uploadFile.isPending && (
+                          <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
+                            {uploadedFile.fileName}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <select
+                    value={progressActivityId}
+                    onChange={(e) => setProgressActivityId(e.target.value)}
+                    aria-label="Vincular a una actividad (opcional)"
                     className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  />
+                  >
+                    <option value="">Ninguna</option>
+                    {activities?.map((activity) => (
+                      <option key={activity.id} value={activity.id}>
+                        {activity.title}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="submit"
-                    disabled={createProgressUpdate.isPending}
+                    disabled={createProgressUpdate.isPending || uploadFile.isPending}
                     className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
                   >
                     {createProgressUpdate.isPending ? "Guardando…" : "Publicar avance"}
@@ -525,6 +813,30 @@ function ProjectDetail() {
         {tab === "equipo" && (
           <>
             <section className="flex-1 min-w-0 flex flex-col gap-6">
+              {isOwner && (
+                <div>
+                  <h2 className="text-[13px] font-semibold text-ink mb-2">Invitar integrante</h2>
+                  <div className={`flex items-end gap-2 bg-paper-raised border border-rule rounded-xl p-3.5 ${CARD_SHADOW}`}>
+                    <div className="flex-1 min-w-0">
+                      <UserPicker
+                        label="Buscar persona"
+                        placeholder="Nombre o correo"
+                        value={inviteUser}
+                        onChange={setInviteUser}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInvite}
+                      disabled={!inviteUser || inviteToTeam.isPending}
+                      className={`rounded-full text-[12.5px] font-bold py-3 px-4 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+                    >
+                      {inviteToTeam.isPending ? "Invitando…" : "Invitar"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {isOwner && (
                 <div>
                   <h2 className="text-[13px] font-semibold text-ink mb-2">Solicitudes</h2>

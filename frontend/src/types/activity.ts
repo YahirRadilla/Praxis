@@ -1,18 +1,45 @@
-export type ActivityStatus = "PENDING" | "IN_PROGRESS" | "DONE" | "OVERDUE";
+export type ActivityStatus = "PENDING" | "IN_PROGRESS" | "TO_VALIDATE" | "DONE" | "OVERDUE";
+export type ActivityPriority = "BAJA" | "MEDIA" | "ALTA";
 export type EvidenceType = "FILE" | "LINK";
+
+export interface ActivityLabel {
+  id: number;
+  projectId: number;
+  name: string;
+  colorHex: string;
+}
+
+export interface ActivityAssignee {
+  activityId: number;
+  userId: number;
+  assignedAt: string;
+  user: { id: number; name: string };
+}
+
+export interface ActivityLabelLink {
+  activityId: number;
+  labelId: number;
+  label: ActivityLabel;
+}
 
 export interface Activity {
   id: number;
   projectId: number;
   ownerId: number;
-  assigneeId: number | null;
   title: string;
   description: string | null;
   dueDate: string;
   status: ActivityStatus;
+  priority: ActivityPriority;
+  position: number;
+  completedAt: string | null;
   createdAt: string;
+  updatedAt: string;
   owner: { id: number; name: string };
-  assignee?: { id: number; name: string } | null;
+  assignees: ActivityAssignee[];
+  labels: ActivityLabelLink[];
+  _count: { comments: number; attachments: number };
+  checklistItems: { done: boolean }[];
 }
 
 export interface Evidence {

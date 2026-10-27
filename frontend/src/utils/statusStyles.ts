@@ -15,9 +15,18 @@ export const PROJECT_STATUS: Record<string, StatusStyle> = {
 
 export const ACTIVITY_STATUS: Record<string, StatusStyle> = {
   PENDING: { label: "Pendiente", bg: "#F0EFEC", fg: "#5A6069" },
-  IN_PROGRESS: { label: "En curso", bg: "#E8F1F7", fg: "#0A97D9" },
+  // fg darkened from #0A97D9 (~2.8:1 on this bg, fails WCAG AA) to ~5.8:1.
+  IN_PROGRESS: { label: "En progreso", bg: "#E8F1F7", fg: "#09608F" },
+  TO_VALIDATE: { label: "Por validar", bg: "#E5F3EC", fg: "#19486A" },
   DONE: { label: "Completada", bg: "#EAF4EA", fg: "#2D5E3A" },
   OVERDUE: { label: "Atrasada", bg: "#FBE9E7", fg: "#A21942" },
+};
+
+export const ACTIVITY_PRIORITY: Record<string, StatusStyle> = {
+  BAJA: { label: "Baja", bg: "#F0EFEC", fg: "#5A6069" },
+  // fg darkened from #BF8B2E (~2.7:1 on this bg, fails WCAG AA) to ~5.9:1.
+  MEDIA: { label: "Media", bg: "#FDF3E0", fg: "#7A581A" },
+  ALTA: { label: "Alta", bg: "#FBE9E7", fg: "#A21942" },
 };
 
 export const DICTAMEN_VERDICT: Record<string, StatusStyle> = {

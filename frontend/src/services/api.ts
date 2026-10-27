@@ -8,7 +8,7 @@ import type {
   Sdg,
 } from "../types/project";
 import type { ReceivedTeamRequest, TeamMember, TeamRequest } from "../types/team";
-import type { Activity, FeedUpdate, ProgressUpdate } from "../types/activity";
+import type { Activity, ActivityPriority, ActivityStatus, FeedUpdate, ProgressUpdate } from "../types/activity";
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 import type { Dictamen, DictamenVerdict } from "../types/dictamen";
 
@@ -185,7 +185,15 @@ export function listTeamRequest(projectId: number) {
 export function createActivityRequest(
   token: string,
   projectId: number,
-  payload: { title: string; description?: string; dueDate: string; assigneeId?: number },
+  payload: {
+    title: string;
+    description?: string;
+    dueDate: string;
+    priority?: ActivityPriority;
+    status?: ActivityStatus;
+    assigneeIds?: number[];
+    labelIds?: number[];
+  },
 ) {
   return request<Activity>(`/api/projects/${projectId}/activities`, {
     method: "POST",
@@ -198,16 +206,23 @@ export function listActivitiesRequest(projectId: number) {
   return request<Activity[]>(`/api/projects/${projectId}/activities`);
 }
 
-export function updateActivityStatusRequest(
+export function moveActivityRequest(
   token: string,
   projectId: number,
   activityId: number,
-  status: Activity["status"],
+  payload: { status: ActivityStatus; position: number },
 ) {
-  return request<Activity>(`/api/projects/${projectId}/activities/${activityId}`, {
-    method: "PATCH",
+  return request<Activity>(`/api/projects/${projectId}/activities/${activityId}/move`, {
+    method: "POST",
     token,
-    body: { status },
+    body: payload,
+  });
+}
+
+export function deleteActivityRequest(token: string, projectId: number, activityId: number) {
+  return request<void>(`/api/projects/${projectId}/activities/${activityId}`, {
+    method: "DELETE",
+    token,
   });
 }
 

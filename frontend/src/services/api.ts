@@ -19,6 +19,7 @@ import type {
   ChecklistItem,
   ChecklistSection,
   FeedUpdate,
+  MyActivity,
   ProgressUpdate,
 } from "../types/activity";
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
@@ -216,6 +217,16 @@ export function createActivityRequest(
 
 export function listActivitiesRequest(projectId: number) {
   return request<Activity[]>(`/api/projects/${projectId}/activities`);
+}
+
+export function listMyActivitiesRequest(
+  token: string,
+  filters: { status?: ActivityStatus; projectId?: number } = {},
+) {
+  return request<MyActivity[]>("/api/users/me/activities", {
+    token,
+    query: { status: filters.status, projectId: filters.projectId },
+  });
 }
 
 export function moveActivityRequest(

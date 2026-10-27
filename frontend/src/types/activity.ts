@@ -123,6 +123,29 @@ export interface ActivityDetail {
   project: { id: number; status: ProjectStatus; ownerId: number; visibility: ProjectVisibility };
 }
 
+/**
+ * Shape returned by GET /api/users/me/activities ("Mis tareas") — a single
+ * activity assigned to the current user, with its project context. Unlike
+ * `Activity` it carries no `assignees` (always the current user) or
+ * `checklistItems`/`_count` (not needed outside the project board/table).
+ */
+export interface MyActivity {
+  id: number;
+  projectId: number;
+  ownerId: number;
+  title: string;
+  description: string | null;
+  dueDate: string;
+  status: ActivityStatus;
+  priority: ActivityPriority;
+  position: number;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  labels: ActivityLabelLink[];
+  project: { id: number; name: string; status: ProjectStatus };
+}
+
 export interface Evidence {
   id: number;
   progressUpdateId: number;

@@ -53,7 +53,9 @@ enum TeamRequestInitiator {
 enum ActivityStatus {
   PENDING
   IN_PROGRESS
+  TO_VALIDATE
   DONE
+  /// Derived client-side from dueDate; never written by any endpoint.
   OVERDUE
 }
 
@@ -65,6 +67,12 @@ enum EvidenceType {
 enum DictamenVerdict {
   APPROVED
   CHANGES_REQUESTED
+}
+
+enum ActivityPriority {
+  BAJA
+  MEDIA
+  ALTA
 }
 
 model User {
@@ -86,10 +94,15 @@ model User {
   publishedChallenges  Challenge[]      @relation("ChallengeOrganization")
   teamRequests         TeamRequest[]
   ownedActivities      Activity[]       @relation("ActivityOwner")
-  assignedActivities   Activity[]       @relation("ActivityAssignee")
   progressUpdates      ProgressUpdate[]
   savedProjects        SavedProject[]
   dictamenesEmitidos   Dictamen[]       @relation("DictamenEvaluator")
+
+  activityAssignments      ActivityAssignee[]
+  activityEvents           ActivityEvent[]
+  checklistItemsCompleted  ChecklistItem[]
+  activityAttachments      ActivityAttachment[]
+  activityComments         ActivityComment[]
 
   @@map("users")
 }
@@ -173,6 +186,7 @@ model Project {
   progressUpdates ProgressUpdate[]
   savedBy         SavedProject[]
   dictamenes      Dictamen[]
+  labels          ProjectLabel[]
 
   @@map("projects")
 }
@@ -218,21 +232,32 @@ model TeamRequest {
 }
 
 model Activity {
-  id          Int            @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   projectId   Int
   ownerId     Int
-  assigneeId  Int?
   title       String
   description String?
   dueDate     DateTime
-  status      ActivityStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
+  status      ActivityStatus   @default(PENDING)
+  priority    ActivityPriority @default(MEDIA)
+  position    Int              @default(0)
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   owner           User             @relation("ActivityOwner", fields: [ownerId], references: [id])
-  assignee        User?            @relation("ActivityAssignee", fields: [assigneeId], references: [id])
   progressUpdates ProgressUpdate[]
 
+  assignees         ActivityAssignee[]
+  events            ActivityEvent[]
+  checklistSections ChecklistSection[]
+  checklistItems    ChecklistItem[]
+  attachments       ActivityAttachment[]
+  comments          ActivityComment[]
+  labels            ActivityLabel[]
+
+  @@index([projectId, status, position])
   @@map("activities")
 }
 
@@ -293,4 +318,114 @@ model Dictamen {
 
   @@unique([projectId, evaluatorId])
   @@map("dictamenes")
+}
+
+model ActivityAssignee {
+  activityId Int
+  userId     Int
+  assignedAt DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@id([activityId, userId])
+  @@index([userId])
+  @@map("activity_assignees")
+}
+
+model ActivityEvent {
+  id         Int             @id @default(autoincrement())
+  activityId Int
+  actorId    Int
+  fromStatus ActivityStatus?
+  toStatus   ActivityStatus
+  createdAt  DateTime        @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  actor    User     @relation(fields: [actorId], references: [id])
+
+  @@map("activity_events")
+}
+
+model ChecklistSection {
+  id         Int    @id @default(autoincrement())
+  activityId Int
+  name       String
+  position   Int    @default(0)
+
+  activity Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  items    ChecklistItem[]
+
+  @@map("checklist_sections")
+}
+
+model ChecklistItem {
+  id         Int       @id @default(autoincrement())
+  activityId Int
+  sectionId  Int?
+  text       String
+  note       String?
+  done       Boolean   @default(false)
+  position   Int       @default(0)
+  doneById   Int?
+  doneAt     DateTime?
+
+  activity Activity          @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  section  ChecklistSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  doneBy   User?             @relation(fields: [doneById], references: [id])
+
+  @@map("checklist_items")
+}
+
+model ActivityAttachment {
+  id         Int      @id @default(autoincrement())
+  activityId Int
+  uploaderId Int
+  url        String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  uploader User     @relation(fields: [uploaderId], references: [id])
+
+  @@map("activity_attachments")
+}
+
+model ActivityComment {
+  id         Int      @id @default(autoincrement())
+  activityId Int
+  authorId   Int
+  text       String
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id])
+
+  @@map("activity_comments")
+}
+
+model ProjectLabel {
+  id        Int    @id @default(autoincrement())
+  projectId Int
+  name      String
+  colorHex  String
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  labels  ActivityLabel[]
+
+  @@unique([projectId, name])
+  @@map("project_labels")
+}
+
+model ActivityLabel {
+  activityId Int
+  labelId    Int
+
+  activity Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  label    ProjectLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, labelId])
+  @@map("activity_labels")
 }

@@ -1,13 +1,16 @@
-import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useState, type ChangeEvent, type FormEvent } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import ProjectHeaderBand from "../components/ProjectHeaderBand";
-import ActivityRow from "../components/ActivityRow";
 import ProgressUpdateCard from "../components/ProgressUpdateCard";
 import TeamMemberRow from "../components/team/TeamMemberRow";
 import TeamRequestRow from "../components/team/TeamRequestRow";
 import UserPicker from "../components/UserPicker";
+import AvatarStack from "../components/AvatarStack";
+import ActivitiesTab from "../components/activities/ActivitiesTab";
+import ActivityDetailModal from "../components/activities/ActivityDetailModal";
+import { Lateral, LateralCard } from "../components/LayoutPrimitives";
 import type { ProjectPersonRef } from "../types/project";
 import type { DictamenVerdict } from "../types/dictamen";
 import { useAuth } from "../context/AuthContext";
@@ -27,12 +30,7 @@ import {
   useRespondToRequest,
   useInviteToTeam,
 } from "../hooks/useTeam";
-import {
-  useActivities,
-  useCreateActivity,
-  useUpdateActivityStatus,
-  type SettableActivityStatus,
-} from "../hooks/useActivities";
+import { useActivities } from "../hooks/useActivities";
 import { useProgressUpdates, useCreateProgressUpdate, useUploadFile } from "../hooks/useProgressUpdates";
 import { useDictamenes, useCreateDictamen } from "../hooks/useDictamenes";
 import { getErrorMessage } from "../services/api";
@@ -42,34 +40,33 @@ import { pluralize, timeAgo } from "../utils/text";
 import { avatarColorFor } from "../utils/avatarColor";
 import { CheckCircle, Circle, WarningCircle } from "@phosphor-icons/react";
 
-type TabKey = "info" | "actividades" | "avances" | "equipo";
+type TabKey = "info" | "actividades" | "equipo";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "info", label: "Información" },
   { key: "actividades", label: "Actividades" },
-  { key: "avances", label: "Avances" },
   { key: "equipo", label: "Equipo" },
 ];
 
-function Lateral({ children }: { children: ReactNode }) {
-  return <aside className="w-[260px] shrink-0 flex flex-col gap-5">{children}</aside>;
-}
-
-function LateralCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className={`bg-paper-raised border border-rule rounded-xl p-4 flex flex-col gap-3 ${CARD_SHADOW}`}>
-      <h3 className="text-[12.5px] font-semibold text-ink m-0">{title}</h3>
-      {children}
-    </div>
-  );
+function isTabKey(value: string | null): value is TabKey {
+  return value === "info" || value === "actividades" || value === "avances" || value === "equipo";
 }
 
 function ProjectDetail() {
-  const { id } = useParams();
+  const { id, activityId } = useParams();
   const projectId = Number(id);
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const [tab, setTab] = useState<TabKey>("info");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [tab, setTabState] = useState<TabKey>(isTabKey(initialTab) ? initialTab : "info");
+
+  function setTab(next: TabKey) {
+    setTabState(next);
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    setSearchParams(params);
+  }
 
   const { data: project, isLoading } = useProject(projectId);
   const { data: team } = useTeam(projectId);
@@ -84,8 +81,6 @@ function ProjectDetail() {
   const requestToJoin = useRequestToJoin(projectId);
   const respondToRequest = useRespondToRequest(projectId);
   const inviteToTeam = useInviteToTeam(projectId);
-  const createActivity = useCreateActivity(projectId);
-  const updateActivityStatus = useUpdateActivityStatus(projectId);
   const createProgressUpdate = useCreateProgressUpdate(projectId);
   const uploadFile = useUploadFile();
   const createDictamen = useCreateDictamen(projectId);
@@ -93,11 +88,7 @@ function ProjectDetail() {
   const saveProject = useSaveProject();
   const unsaveProject = useUnsaveProject();
 
-  const [activityTitle, setActivityTitle] = useState("");
-  const [activityDueDate, setActivityDueDate] = useState("");
-  const [activityAssigneeId, setActivityAssigneeId] = useState("");
   const [progressText, setProgressText] = useState("");
-  const [progressActivityId, setProgressActivityId] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceMode, setEvidenceMode] = useState<"link" | "file">("link");
   const [uploadedFile, setUploadedFile] = useState<{ url: string; fileName: string } | null>(null);
@@ -118,7 +109,6 @@ function ProjectDetail() {
   const isOwner = user?.id === project.ownerId;
   const isMember = isOwner || !!team?.some((m) => m.id === user?.id);
   const doneCount = activities?.filter((a) => a.status === "DONE").length ?? 0;
-  const totalEvidence = progressUpdates?.reduce((acc, u) => acc + u.evidence.length, 0) ?? 0;
   const isSaved = !!savedProjects?.some((p) => p.id === project.id);
   const isEvaluator =
     !!user && (user.id === project.teacher?.id || user.id === project.organization?.id);
@@ -174,42 +164,12 @@ function ProjectDetail() {
     );
   }
 
-  function handleCreateActivity(e: FormEvent) {
-    e.preventDefault();
-    createActivity.mutate(
-      {
-        title: activityTitle,
-        dueDate: activityDueDate,
-        assigneeId: activityAssigneeId ? Number(activityAssigneeId) : undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Actividad creada");
-          setActivityTitle("");
-          setActivityDueDate("");
-          setActivityAssigneeId("");
-        },
-        onError: (error) => toast.error(getErrorMessage(error, "No se pudo crear la actividad.")),
-      },
-    );
-  }
-
-  function handleAdvanceActivityStatus(activityId: number, status: SettableActivityStatus) {
-    updateActivityStatus.mutate(
-      { activityId, status },
-      {
-        onError: (error) => toast.error(getErrorMessage(error, "No se pudo actualizar la actividad.")),
-      },
-    );
-  }
-
   function handleCreateProgressUpdate(e: FormEvent) {
     e.preventDefault();
     createProgressUpdate.mutate(
       {
         text: progressText,
         postedToFeed: true,
-        activityId: progressActivityId ? Number(progressActivityId) : undefined,
         evidence: uploadedFile
           ? [{ type: "FILE", url: uploadedFile.url, fileName: uploadedFile.fileName }]
           : evidenceUrl
@@ -223,7 +183,6 @@ function ProjectDetail() {
           setEvidenceUrl("");
           setUploadedFile(null);
           setEvidenceMode("link");
-          setProgressActivityId("");
           setShowProgressForm(false);
         },
         onError: (error) => toast.error(getErrorMessage(error, "No se pudo registrar el avance.")),
@@ -397,9 +356,11 @@ function ProjectDetail() {
                         ? `Completada por ${activity.owner.name}`
                         : activity.status === "OVERDUE"
                           ? `Venció el ${new Date(activity.dueDate).toLocaleDateString("es-MX")}`
-                          : activity.status === "IN_PROGRESS"
-                            ? `En curso · vence ${new Date(activity.dueDate).toLocaleDateString("es-MX")}`
-                            : `Programada para ${new Date(activity.dueDate).toLocaleDateString("es-MX")}`;
+                          : activity.status === "TO_VALIDATE"
+                            ? "Esperando validación"
+                            : activity.status === "IN_PROGRESS"
+                              ? `En curso · vence ${new Date(activity.dueDate).toLocaleDateString("es-MX")}`
+                              : `Programada para ${new Date(activity.dueDate).toLocaleDateString("es-MX")}`;
                     return (
                       <div
                         key={activity.id}
@@ -427,6 +388,109 @@ function ProjectDetail() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className={`bg-paper-raised border border-rule rounded-xl p-6 flex flex-col gap-3 ${CARD_SHADOW}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-[16px] font-bold text-ink m-0">Avances generales</h2>
+                    <p className="text-[12px] text-ink-faint mt-0.5 mb-0">
+                      Actualizaciones del proyecto que no están ligadas a una actividad puntual.
+                    </p>
+                  </div>
+                  {isMember && (
+                    <button
+                      type="button"
+                      onClick={() => setShowProgressForm((v) => !v)}
+                      className={`rounded-full text-[12.5px] font-bold py-2 px-4 cursor-pointer shrink-0 ${PRIMARY_BUTTON}`}
+                    >
+                      Registrar avance
+                    </button>
+                  )}
+                </div>
+
+                {showProgressForm && (
+                  <form
+                    onSubmit={handleCreateProgressUpdate}
+                    className="flex flex-col gap-2 bg-paper border border-rule rounded-xl p-4"
+                  >
+                    <textarea
+                      required
+                      rows={2}
+                      value={progressText}
+                      onChange={(e) => setProgressText(e.target.value)}
+                      placeholder="¿Qué avanzaste?"
+                      className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-1 self-start rounded-full bg-surface-ground p-1">
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceMode("link")}
+                          className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
+                            evidenceMode === "link" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
+                          }`}
+                        >
+                          Agregar un link
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEvidenceMode("file")}
+                          className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
+                            evidenceMode === "file" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
+                          }`}
+                        >
+                          Subir un archivo
+                        </button>
+                      </div>
+
+                      {evidenceMode === "link" ? (
+                        <input
+                          type="url"
+                          value={evidenceUrl}
+                          onChange={(e) => setEvidenceUrl(e.target.value)}
+                          placeholder="Enlace a evidencia (opcional)"
+                          className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,video/mp4"
+                            onChange={handleFileSelected}
+                            className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                          />
+                          {uploadFile.isPending && (
+                            <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
+                          )}
+                          {uploadedFile && !uploadFile.isPending && (
+                            <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
+                              {uploadedFile.fileName}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={createProgressUpdate.isPending || uploadFile.isPending}
+                      className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+                    >
+                      {createProgressUpdate.isPending ? "Guardando…" : "Publicar avance"}
+                    </button>
+                  </form>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  {progressUpdates
+                    ?.filter((u) => !u.activityId)
+                    .map((update) => (
+                      <ProgressUpdateCard key={update.id} update={update} />
+                    ))}
+                  {progressUpdates?.filter((u) => !u.activityId).length === 0 && (
+                    <p className="text-[13px] text-ink-soft m-0">Todavía no hay avances generales registrados.</p>
+                  )}
                 </div>
               </div>
             </section>
@@ -551,23 +615,7 @@ function ProjectDetail() {
               </LateralCard>
 
               <LateralCard title="Equipo">
-                <div className="flex items-center -space-x-2">
-                  {team?.slice(0, 5).map((m) => (
-                    <span
-                      key={m.id}
-                      title={m.name}
-                      style={{ backgroundColor: avatarColorFor(m.id) }}
-                      className="w-8 h-8 rounded-full border-2 border-paper-raised flex items-center justify-center text-white text-[11px] font-bold"
-                    >
-                      {m.name.charAt(0).toUpperCase()}
-                    </span>
-                  ))}
-                  {(team?.length ?? 0) > 5 && (
-                    <span className="w-8 h-8 rounded-full border-2 border-paper-raised bg-surface-ground flex items-center justify-center text-ink-soft text-[10.5px] font-bold">
-                      +{(team?.length ?? 0) - 5}
-                    </span>
-                  )}
-                </div>
+                <AvatarStack people={team ?? []} size="md" />
                 <p className="text-[12.5px] text-ink-soft m-0">
                   {team?.length ?? 0} {pluralize(team?.length ?? 0, "integrante", "integrantes")}
                 </p>
@@ -607,207 +655,16 @@ function ProjectDetail() {
         )}
 
         {tab === "actividades" && (
-          <>
-            <section className="flex-1 min-w-0 flex flex-col gap-2">
-              <div className={`bg-paper-raised border border-rule rounded-xl overflow-hidden ${CARD_SHADOW}`}>
-                {activities?.map((activity) => {
-                  const assignee =
-                    activity.assignee ?? team?.find((m) => m.id === activity.assigneeId) ?? null;
-                  return (
-                    <ActivityRow
-                      key={activity.id}
-                      activity={assignee ? { ...activity, assignee } : activity}
-                      canAct={isMember}
-                      isPending={updateActivityStatus.isPending}
-                      onAdvanceStatus={(status) => handleAdvanceActivityStatus(activity.id, status)}
-                      progressUpdates={progressUpdates?.filter((u) => u.activityId === activity.id)}
-                    />
-                  );
-                })}
-                {activities?.length === 0 && (
-                  <p className="text-[13px] text-ink-soft p-4 m-0">Todavía no hay actividades.</p>
-                )}
-              </div>
-
-              {isMember && (
-                <form onSubmit={handleCreateActivity} className={`flex gap-2 bg-paper-raised border border-rule rounded-xl p-3 ${CARD_SHADOW}`}>
-                  <input
-                    type="text"
-                    required
-                    value={activityTitle}
-                    onChange={(e) => setActivityTitle(e.target.value)}
-                    placeholder="Nueva actividad"
-                    className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  />
-                  <input
-                    type="date"
-                    required
-                    value={activityDueDate}
-                    onChange={(e) => setActivityDueDate(e.target.value)}
-                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  />
-                  <select
-                    value={activityAssigneeId}
-                    onChange={(e) => setActivityAssigneeId(e.target.value)}
-                    aria-label="Responsable (opcional)"
-                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  >
-                    <option value="">Sin asignar</option>
-                    {team?.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={createActivity.isPending}
-                    className={`rounded-full text-[12px] font-bold px-4 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
-                  >
-                    Agregar
-                  </button>
-                </form>
-              )}
-            </section>
-            <Lateral>
-              <LateralCard title="Progreso del semestre">
-                <div className="flex items-center justify-between">
-                  <p className="text-[12.5px] text-ink-soft m-0">
-                    {doneCount} de {activities?.length ?? 0} actividades
-                  </p>
-                  <span className="text-[12.5px] font-bold text-accent-primary">
-                    {activities?.length ? Math.round((doneCount / activities.length) * 100) : 0}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-ground overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent-primary transition-[width] duration-300"
-                    style={{ width: `${activities?.length ? (doneCount / activities.length) * 100 : 0}%` }}
-                  />
-                </div>
-              </LateralCard>
-            </Lateral>
-          </>
-        )}
-
-        {tab === "avances" && (
-          <>
-            <section className="flex-1 min-w-0 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[12.5px] text-ink-faint m-0">
-                  {progressUpdates?.length ?? 0}{" "}
-                  {pluralize(progressUpdates?.length ?? 0, "avance registrado", "avances registrados")}
-                </p>
-                {isMember && (
-                  <button
-                    type="button"
-                    onClick={() => setShowProgressForm((v) => !v)}
-                    className={`rounded-full text-[12.5px] font-bold py-2 px-4 cursor-pointer ${PRIMARY_BUTTON}`}
-                  >
-                    Registrar avance
-                  </button>
-                )}
-              </div>
-
-              {showProgressForm && (
-                <form onSubmit={handleCreateProgressUpdate} className={`flex flex-col gap-2 bg-paper-raised border border-rule rounded-xl p-4 ${CARD_SHADOW}`}>
-                  <textarea
-                    required
-                    rows={2}
-                    value={progressText}
-                    onChange={(e) => setProgressText(e.target.value)}
-                    placeholder="¿Qué avanzaste?"
-                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
-                  />
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-1 self-start rounded-full bg-surface-ground p-1">
-                      <button
-                        type="button"
-                        onClick={() => setEvidenceMode("link")}
-                        className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
-                          evidenceMode === "link" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
-                        }`}
-                      >
-                        Agregar un link
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEvidenceMode("file")}
-                        className={`rounded-full text-[11.5px] font-semibold py-1 px-3 cursor-pointer ${
-                          evidenceMode === "file" ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
-                        }`}
-                      >
-                        Subir un archivo
-                      </button>
-                    </div>
-
-                    {evidenceMode === "link" ? (
-                      <input
-                        type="url"
-                        value={evidenceUrl}
-                        onChange={(e) => setEvidenceUrl(e.target.value)}
-                        placeholder="Enlace a evidencia (opcional)"
-                        className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,video/mp4"
-                          onChange={handleFileSelected}
-                          className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                        />
-                        {uploadFile.isPending && (
-                          <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
-                        )}
-                        {uploadedFile && !uploadFile.isPending && (
-                          <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
-                            {uploadedFile.fileName}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <select
-                    value={progressActivityId}
-                    onChange={(e) => setProgressActivityId(e.target.value)}
-                    aria-label="Vincular a una actividad (opcional)"
-                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  >
-                    <option value="">Ninguna</option>
-                    {activities?.map((activity) => (
-                      <option key={activity.id} value={activity.id}>
-                        {activity.title}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={createProgressUpdate.isPending || uploadFile.isPending}
-                    className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
-                  >
-                    {createProgressUpdate.isPending ? "Guardando…" : "Publicar avance"}
-                  </button>
-                </form>
-              )}
-
-              <div className="flex flex-col gap-3">
-                {progressUpdates?.map((update) => (
-                  <ProgressUpdateCard key={update.id} update={update} />
-                ))}
-                {progressUpdates?.length === 0 && (
-                  <p className="text-[13px] text-ink-soft m-0">Todavía no hay avances registrados.</p>
-                )}
-              </div>
-            </section>
-            <Lateral>
-              <LateralCard title="Evidencias del proyecto">
-                <p className="text-[12.5px] text-ink-soft m-0">
-                  {totalEvidence} {pluralize(totalEvidence, "evidencia compartida", "evidencias compartidas")}
-                </p>
-              </LateralCard>
-            </Lateral>
-          </>
+          <ActivitiesTab
+            projectId={projectId}
+            activities={activities}
+            team={team}
+            progressUpdates={progressUpdates}
+            isMember={isMember}
+            doneCount={doneCount}
+            projectStatus={project.status}
+            isProjectOwner={isOwner}
+          />
         )}
 
         {tab === "equipo" && (
@@ -877,6 +734,18 @@ function ProjectDetail() {
           </>
         )}
       </div>
+
+      {activityId && (
+        <ActivityDetailModal
+          projectId={projectId}
+          activityId={Number(activityId)}
+          team={team ?? []}
+          isMember={isMember}
+          isProjectOwner={isOwner}
+          projectStatus={project.status}
+          onClose={() => navigate(`/proyectos/${projectId}?tab=actividades`)}
+        />
+      )}
     </div>
   );
 }

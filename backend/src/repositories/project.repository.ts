@@ -7,6 +7,7 @@ export const projectInclude = {
   organization: { select: { id: true, name: true, email: true, accountType: true } },
   challenge: { select: { id: true, title: true } },
   sdgs: { include: { sdg: true } },
+  categories: { include: { category: true } },
 } satisfies Prisma.ProjectInclude;
 
 export interface CreateProjectData {
@@ -19,15 +20,17 @@ export interface CreateProjectData {
   organizationId?: number;
   challengeId?: number;
   sdgIds: number[];
+  categoryIds: number[];
   visibility?: ProjectVisibility;
 }
 
 export function createProject(data: CreateProjectData) {
-  const { sdgIds, ...rest } = data;
+  const { sdgIds, categoryIds, ...rest } = data;
   return prisma.project.create({
     data: {
       ...rest,
       sdgs: { create: sdgIds.map((sdgId) => ({ sdgId })) },
+      categories: { create: categoryIds.map((categoryId) => ({ categoryId })) },
     },
     include: projectInclude,
   });
@@ -47,13 +50,17 @@ export interface UpdateProjectData {
   status?: ProjectStatus;
   visibility?: ProjectVisibility;
   sdgIds?: number[];
+  categoryIds?: number[];
 }
 
 export async function updateProject(id: number, data: UpdateProjectData) {
-  const { sdgIds, ...rest } = data;
+  const { sdgIds, categoryIds, ...rest } = data;
 
   if (sdgIds) {
     await prisma.projectSdg.deleteMany({ where: { projectId: id } });
+  }
+  if (categoryIds) {
+    await prisma.projectCategory.deleteMany({ where: { projectId: id } });
   }
 
   return prisma.project.update({
@@ -61,6 +68,9 @@ export async function updateProject(id: number, data: UpdateProjectData) {
     data: {
       ...rest,
       ...(sdgIds ? { sdgs: { create: sdgIds.map((sdgId) => ({ sdgId })) } } : {}),
+      ...(categoryIds
+        ? { categories: { create: categoryIds.map((categoryId) => ({ categoryId })) } }
+        : {}),
     },
     include: projectInclude,
   });
@@ -69,6 +79,7 @@ export async function updateProject(id: number, data: UpdateProjectData) {
 export interface SearchProjectsFilters {
   q?: string;
   sdgIds?: number[];
+  categoryIds?: number[];
 }
 
 export function listProjectsForUser(userId: number) {
@@ -101,6 +112,10 @@ export function searchProjects(filters: SearchProjectsFilters) {
 
   if (filters.sdgIds?.length) {
     where.sdgs = { some: { sdgId: { in: filters.sdgIds } } };
+  }
+
+  if (filters.categoryIds?.length) {
+    where.categories = { some: { categoryId: { in: filters.categoryIds } } };
   }
 
   return prisma.project.findMany({

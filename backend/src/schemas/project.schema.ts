@@ -5,7 +5,11 @@ export const createProjectSchema = z.object({
   description: z.string().min(1, "Completa este campo"),
   problemStatement: z.string().min(1, "Completa este campo"),
   objectives: z.string().min(1, "Completa este campo"),
-  sdgIds: z.array(z.number().int().min(1).max(17)).min(1, "Selecciona al menos un ODS"),
+  sdgIds: z.array(z.number().int().min(1).max(17)).default([]),
+  categoryIds: z
+    .array(z.number().int())
+    .min(1, "Selecciona al menos una categoría")
+    .max(3, "Máximo 3 categorías"),
   teacherId: z.number().int().optional(),
   organizationId: z.number().int().optional(),
   challengeId: z.number().int().optional(),
@@ -17,7 +21,8 @@ export const updateProjectSchema = z.object({
   description: z.string().min(1).optional(),
   problemStatement: z.string().min(1).optional(),
   objectives: z.string().min(1).optional(),
-  sdgIds: z.array(z.number().int().min(1).max(17)).min(1).optional(),
+  sdgIds: z.array(z.number().int().min(1).max(17)).optional(),
+  categoryIds: z.array(z.number().int()).min(1).max(3).optional(),
   teacherId: z.number().int().nullable().optional(),
   organizationId: z.number().int().nullable().optional(),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
@@ -26,6 +31,17 @@ export const updateProjectSchema = z.object({
 export const searchProjectsQuerySchema = z.object({
   q: z.string().optional(),
   sdgIds: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val
+        ? val
+            .split(",")
+            .map((v) => Number(v))
+            .filter((n) => Number.isInteger(n))
+        : undefined,
+    ),
+  categoryIds: z
     .string()
     .optional()
     .transform((val) =>

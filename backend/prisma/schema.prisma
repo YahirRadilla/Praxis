@@ -68,16 +68,17 @@ enum DictamenVerdict {
 }
 
 model User {
-  id           Int         @id @default(autoincrement())
-  email        String      @unique
-  passwordHash String
-  name         String
-  accountType  AccountType
-  skills       String[]
-  interests    String[]
-  verified     Boolean     @default(false)
-  verifiedAt   DateTime?
-  createdAt    DateTime    @default(now())
+  id              Int         @id @default(autoincrement())
+  email           String      @unique
+  passwordHash    String
+  name            String
+  accountType     AccountType
+  skills          String[]
+  interests       String[]
+  academicProgram String?
+  verified        Boolean     @default(false)
+  verifiedAt      DateTime?
+  createdAt       DateTime    @default(now())
 
   ownedProjects        Project[]        @relation("ProjectOwner")
   teachingProjects     Project[]        @relation("ProjectTeacher")
@@ -102,6 +103,17 @@ model Sdg {
   challenges ChallengeSdg[]
 
   @@map("sdgs")
+}
+
+model Category {
+  id       Int    @id @default(autoincrement())
+  name     String
+  colorHex String
+  icon     String
+
+  projects ProjectCategory[]
+
+  @@map("categories")
 }
 
 model Challenge {
@@ -155,6 +167,7 @@ model Project {
   challenge   Challenge? @relation(fields: [challengeId], references: [id])
 
   sdgs            ProjectSdg[]
+  categories      ProjectCategory[]
   teamRequests    TeamRequest[]
   activities      Activity[]
   progressUpdates ProgressUpdate[]
@@ -175,15 +188,26 @@ model ProjectSdg {
   @@map("project_sdgs")
 }
 
+model ProjectCategory {
+  projectId  Int
+  categoryId Int
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@id([projectId, categoryId])
+  @@map("project_categories")
+}
+
 model TeamRequest {
-  id          Int                   @id @default(autoincrement())
+  id          Int                  @id @default(autoincrement())
   projectId   Int
   userId      Int
   role        TeamRequestRole
   status      TeamRequestStatus    @default(PENDING)
   initiatedBy TeamRequestInitiator @default(REQUESTER)
   message     String?
-  createdAt   DateTime              @default(now())
+  createdAt   DateTime             @default(now())
   resolvedAt  DateTime?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)

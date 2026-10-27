@@ -1,5 +1,6 @@
 import type { AuthResponse, AuthUser, LoginPayload, RegisterPayload } from "../types/auth";
 import type {
+  Category,
   CreateProjectPayload,
   Project,
   ProjectPersonRef,
@@ -90,7 +91,7 @@ export function registerRequest(payload: RegisterPayload) {
 
 export function updateProfileRequest(
   token: string,
-  payload: { name?: string; skills?: string[]; interests?: string[] },
+  payload: { name?: string; skills?: string[]; interests?: string[]; academicProgram?: string },
 ) {
   return request<AuthUser>("/api/users/me", { method: "PATCH", token, body: payload });
 }
@@ -99,13 +100,21 @@ export function listSdgsRequest() {
   return request<Sdg[]>("/api/sdgs");
 }
 
+export function listCategoriesRequest() {
+  return request<Category[]>("/api/categories");
+}
+
 export function createProjectRequest(token: string, payload: CreateProjectPayload) {
   return request<Project>("/api/projects", { method: "POST", token, body: payload });
 }
 
 export function searchProjectsRequest(params: SearchProjectsParams) {
   return request<Project[]>("/api/projects", {
-    query: { q: params.q, sdgIds: params.sdgIds?.length ? params.sdgIds.join(",") : undefined },
+    query: {
+      q: params.q,
+      sdgIds: params.sdgIds?.length ? params.sdgIds.join(",") : undefined,
+      categoryIds: params.categoryIds?.length ? params.categoryIds.join(",") : undefined,
+    },
   });
 }
 

@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useUpdateProfile } from "../hooks/useProfile";
 import { getErrorMessage } from "../services/api";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import { INSTITUTION_NAME } from "../config/institution";
 
 function toCsv(items: string[]): string {
   return items.join(", ");
@@ -25,11 +26,12 @@ function EditProfile() {
   const [name, setName] = useState(user?.name ?? "");
   const [skills, setSkills] = useState(toCsv(user?.skills ?? []));
   const [interests, setInterests] = useState(toCsv(user?.interests ?? []));
+  const [academicProgram, setAcademicProgram] = useState(user?.academicProgram ?? "");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     updateProfile.mutate(
-      { name, skills: fromCsv(skills), interests: fromCsv(interests) },
+      { name, skills: fromCsv(skills), interests: fromCsv(interests), academicProgram },
       {
         onSuccess: () => {
           toast.success("Perfil actualizado");
@@ -68,6 +70,17 @@ function EditProfile() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-semibold text-ink">Programa académico</span>
+          <input
+            type="text"
+            value={academicProgram}
+            onChange={(e) => setAcademicProgram(e.target.value)}
+            placeholder={`Ingeniería en Sistemas Computacionales, ${INSTITUTION_NAME}`}
             className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
           />
         </label>

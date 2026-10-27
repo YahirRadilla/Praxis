@@ -14,6 +14,13 @@ export interface Sdg {
   colorHex: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  colorHex: string;
+  icon: string;
+}
+
 export interface ProjectPersonRef {
   id: number;
   name: string;
@@ -38,6 +45,7 @@ export interface Project {
   teacher: ProjectPersonRef | null;
   organization: ProjectPersonRef | null;
   sdgs: { projectId: number; sdgId: number; sdg: Sdg }[];
+  categories: { projectId: number; categoryId: number; category: Category }[];
   challenge: { id: number; title: string } | null;
 }
 
@@ -47,6 +55,7 @@ export interface CreateProjectPayload {
   problemStatement: string;
   objectives: string;
   sdgIds: number[];
+  categoryIds: number[];
   teacherId?: number;
   organizationId?: number;
   visibility?: ProjectVisibility;
@@ -56,4 +65,5 @@ export interface CreateProjectPayload {
 export interface SearchProjectsParams {
   q?: string;
   sdgIds?: number[];
+  categoryIds?: number[];
 }

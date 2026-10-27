@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import StatusPill from "../components/StatusPill";
 import { useSdgs } from "../hooks/useSdgs";
+import { useCategories } from "../hooks/useCategories";
 import { useCreateProject } from "../hooks/useProjects";
 import { useChallenge } from "../hooks/useChallenges";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
+import CategoryPicker from "../components/CategoryPicker";
 import UserPicker from "../components/UserPicker";
 import type { ProjectPersonRef } from "../types/project";
 import { createProjectFormSchema, type CreateProjectFormValues } from "../schemas/project.schema";
@@ -18,6 +20,7 @@ import { CARD_SHADOW, PRIMARY_BUTTON, PROJECT_STATUS } from "../utils/statusStyl
 
 const SECTIONS = [
   { id: "info", label: "Información del proyecto" },
+  { id: "categorias", label: "Categorías" },
   { id: "sdgs", label: "Objetivos de Desarrollo Sostenible" },
   { id: "reto", label: "Reto" },
   { id: "visibilidad", label: "Visibilidad" },
@@ -30,6 +33,7 @@ function CreateProject() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: sdgs, isLoading: loadingSdgs } = useSdgs();
+  const { data: categories, isLoading: loadingCategories } = useCategories();
   const createProject = useCreateProject();
   const [activeSection, setActiveSection] = useState("info");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -50,7 +54,7 @@ function CreateProject() {
     formState: { errors },
   } = useForm<CreateProjectFormValues>({
     resolver: zodResolver(createProjectFormSchema),
-    defaultValues: { sdgIds: [], visibility: "PUBLIC", challengeId: linkedChallengeId },
+    defaultValues: { sdgIds: [], categoryIds: [], visibility: "PUBLIC", challengeId: linkedChallengeId },
   });
 
   useEffect(() => {
@@ -209,6 +213,33 @@ function CreateProject() {
           </section>
 
           <section
+            id="categorias"
+            ref={(el) => {
+              sectionRefs.current.categorias = el;
+            }}
+            className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
+          >
+            <div>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Categorías</h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Elige de 1 a 3 categorías que describan la disciplina de tu proyecto.
+              </p>
+            </div>
+            {loadingCategories ? (
+              <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>
+            ) : (
+              <Controller
+                name="categoryIds"
+                control={control}
+                render={({ field }) => (
+                  <CategoryPicker categories={categories ?? []} value={field.value} onChange={field.onChange} />
+                )}
+              />
+            )}
+            <FieldError message={errors.categoryIds?.message as string | undefined} />
+          </section>
+
+          <section
             id="sdgs"
             ref={(el) => {
               sectionRefs.current.sdgs = el;
@@ -216,8 +247,12 @@ function CreateProject() {
             className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
           >
             <div>
-              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Objetivos de Desarrollo Sostenible</h2>
-              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">Elige los ODS que impacta tu proyecto.</p>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">
+                Objetivos de Desarrollo Sostenible (opcional)
+              </h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Si tu proyecto atiende algún ODS, selecciónalo aquí.
+              </p>
             </div>
             {loadingSdgs ? (
               <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>

@@ -3,7 +3,8 @@ import type { Project } from "../types/project";
 
 function ProjectHeaderBand({ project, actions }: { project: Project; actions?: ReactNode }) {
   const mainSdg = project.sdgs[0]?.sdg;
-  const bandColor = mainSdg?.colorHex ?? "#19486A";
+  const mainCategory = project.categories?.[0]?.category;
+  const bandColor = mainSdg?.colorHex ?? mainCategory?.colorHex ?? "#19486A";
 
   return (
     <div className="px-8 pt-6">
@@ -19,15 +20,25 @@ function ProjectHeaderBand({ project, actions }: { project: Project; actions?: R
 
         <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col gap-2.5">
           <div className="flex items-center gap-2 flex-wrap">
-            {project.sdgs.map(({ sdg }) => (
-              <span
-                key={sdg.id}
-                style={{ backgroundColor: sdg.colorHex }}
-                className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-              >
-                ODS {String(sdg.id).padStart(2, "0")} · {sdg.name}
-              </span>
-            ))}
+            {project.sdgs.length > 0
+              ? project.sdgs.map(({ sdg }) => (
+                  <span
+                    key={sdg.id}
+                    style={{ backgroundColor: sdg.colorHex }}
+                    className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+                  >
+                    ODS {String(sdg.id).padStart(2, "0")} · {sdg.name}
+                  </span>
+                ))
+              : project.categories.map(({ category }) => (
+                  <span
+                    key={category.id}
+                    style={{ backgroundColor: category.colorHex }}
+                    className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+                  >
+                    {category.name}
+                  </span>
+                ))}
           </div>
           <h1 className="font-heading text-[30px] font-bold text-white m-0 leading-tight drop-shadow-sm">
             {project.name}

@@ -3,17 +3,21 @@ import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import ProjectCard from "../components/ProjectCard";
 import SdgMultiSelect from "../components/SdgMultiSelect";
+import CategoryMultiSelect from "../components/CategoryMultiSelect";
 import { useSearchProjects } from "../hooks/useProjects";
 import { useSdgs } from "../hooks/useSdgs";
+import { useCategories } from "../hooks/useCategories";
 import { PRIMARY_BUTTON } from "../utils/statusStyles";
 import { pluralize } from "../utils/text";
 
 function Explore() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [sdgIds, setSdgIds] = useState<number[]>([]);
+  const { data: categories } = useCategories();
   const { data: sdgs } = useSdgs();
-  const { data: projects, isLoading } = useSearchProjects({ q: q || undefined, sdgIds });
+  const { data: projects, isLoading } = useSearchProjects({ q: q || undefined, categoryIds, sdgIds });
 
   function handleSearch(value: string) {
     setQ(value);
@@ -46,6 +50,7 @@ function Explore() {
             placeholder="Buscar proyectos por nombre o descripción"
             className="flex-1 min-w-[240px] max-w-[500px] border border-rule rounded-full bg-paper px-5 py-3 text-[13.5px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
           />
+          <CategoryMultiSelect categories={categories ?? []} value={categoryIds} onChange={setCategoryIds} />
           <SdgMultiSelect sdgs={sdgs ?? []} value={sdgIds} onChange={setSdgIds} />
         </div>
       </header>

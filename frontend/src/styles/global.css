@@ -67,6 +67,16 @@ a:focus-visible,
 
 input,
 textarea,
-select {
+select,
+[role="textbox"] {
+  outline: none;
   transition: border-color 150ms ease, outline-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="textbox"]:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
 }

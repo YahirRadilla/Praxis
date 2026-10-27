@@ -28,7 +28,12 @@ export async function createProject(ownerId: number, input: CreateProjectInput) 
   return createProjectRepo(data);
 }
 
-export async function assertProjectReadable(project: Project, requesterId?: number) {
+type ReadableProjectShape = Pick<Project, "id" | "status" | "visibility" | "ownerId">;
+
+export async function assertProjectReadable(
+  project: ReadableProjectShape,
+  requesterId?: number,
+) {
   const isPubliclyVisible = project.status !== "DRAFT" && project.visibility === "PUBLIC";
   if (isPubliclyVisible) return;
 

@@ -20,6 +20,7 @@ import { teamRoutes } from "./team.routes";
 import { activityRoutes } from "./activity.routes";
 import { progressUpdateRoutes } from "./progress-update.routes";
 import { dictamenRoutes } from "./dictamen.routes";
+import { labelRoutes } from "./label.routes";
 
 export const projectRoutes = Router();
 
@@ -40,3 +41,4 @@ projectRoutes.use("/:projectId/team-requests", teamRoutes);
 projectRoutes.use("/:projectId/activities", activityRoutes);
 projectRoutes.use("/:projectId/progress-updates", progressUpdateRoutes);
 projectRoutes.use("/:projectId/dictamenes", dictamenRoutes);
+projectRoutes.use("/:projectId/labels", labelRoutes);

@@ -8,7 +8,19 @@ import type {
   Sdg,
 } from "../types/project";
 import type { ReceivedTeamRequest, TeamMember, TeamRequest } from "../types/team";
-import type { Activity, ActivityPriority, ActivityStatus, FeedUpdate, ProgressUpdate } from "../types/activity";
+import type {
+  Activity,
+  ActivityAttachment,
+  ActivityComment,
+  ActivityDetail,
+  ActivityLabel,
+  ActivityPriority,
+  ActivityStatus,
+  ChecklistItem,
+  ChecklistSection,
+  FeedUpdate,
+  ProgressUpdate,
+} from "../types/activity";
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 import type { Dictamen, DictamenVerdict } from "../types/dictamen";
 
@@ -226,6 +238,185 @@ export function deleteActivityRequest(token: string, projectId: number, activity
   });
 }
 
+export function getActivityDetailRequest(
+  projectId: number,
+  activityId: number,
+  token?: string | null,
+) {
+  return request<ActivityDetail>(`/api/projects/${projectId}/activities/${activityId}`, { token });
+}
+
+export interface UpdateActivityPayload {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  priority?: ActivityPriority;
+  assigneeIds?: number[];
+  labelIds?: number[];
+}
+
+export function updateActivityRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  payload: UpdateActivityPayload,
+) {
+  return request<Activity>(`/api/projects/${projectId}/activities/${activityId}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+// --- Checklist sections -----------------------------------------------------
+
+export function createChecklistSectionRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  payload: { name: string },
+) {
+  return request<ChecklistSection>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-sections`,
+    { method: "POST", token, body: payload },
+  );
+}
+
+export function updateChecklistSectionRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  sectionId: number,
+  payload: { name?: string; position?: number },
+) {
+  return request<ChecklistSection>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-sections/${sectionId}`,
+    { method: "PATCH", token, body: payload },
+  );
+}
+
+export function deleteChecklistSectionRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  sectionId: number,
+) {
+  return request<void>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-sections/${sectionId}`,
+    { method: "DELETE", token },
+  );
+}
+
+// --- Checklist items ---------------------------------------------------------
+
+export function createChecklistItemRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  payload: { text: string; note?: string; sectionId?: number },
+) {
+  return request<ChecklistItem>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-items`,
+    { method: "POST", token, body: payload },
+  );
+}
+
+export function updateChecklistItemRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  itemId: number,
+  payload: { text?: string; note?: string; sectionId?: number | null; done?: boolean; position?: number },
+) {
+  return request<ChecklistItem>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-items/${itemId}`,
+    { method: "PATCH", token, body: payload },
+  );
+}
+
+export function deleteChecklistItemRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  itemId: number,
+) {
+  return request<void>(
+    `/api/projects/${projectId}/activities/${activityId}/checklist-items/${itemId}`,
+    { method: "DELETE", token },
+  );
+}
+
+// --- Comments -----------------------------------------------------------------
+
+export function createActivityCommentRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  payload: { text: string },
+) {
+  return request<ActivityComment>(`/api/projects/${projectId}/activities/${activityId}/comments`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function deleteActivityCommentRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  commentId: number,
+) {
+  return request<void>(
+    `/api/projects/${projectId}/activities/${activityId}/comments/${commentId}`,
+    { method: "DELETE", token },
+  );
+}
+
+// --- Attachments ---------------------------------------------------------------
+
+export function createActivityAttachmentRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  payload: { url: string; fileName: string; mimeType: string; sizeBytes: number },
+) {
+  return request<ActivityAttachment>(
+    `/api/projects/${projectId}/activities/${activityId}/attachments`,
+    { method: "POST", token, body: payload },
+  );
+}
+
+export function deleteActivityAttachmentRequest(
+  token: string,
+  projectId: number,
+  activityId: number,
+  attachmentId: number,
+) {
+  return request<void>(
+    `/api/projects/${projectId}/activities/${activityId}/attachments/${attachmentId}`,
+    { method: "DELETE", token },
+  );
+}
+
+// --- Labels --------------------------------------------------------------------
+
+export function listLabelsRequest(projectId: number) {
+  return request<ActivityLabel[]>(`/api/projects/${projectId}/labels`);
+}
+
+export function createLabelRequest(
+  token: string,
+  projectId: number,
+  payload: { name: string; colorHex: string },
+) {
+  return request<ActivityLabel>(`/api/projects/${projectId}/labels`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
 export function createProgressUpdateRequest(
   token: string,
   projectId: number,
@@ -250,7 +441,7 @@ export function listProgressUpdatesRequest(projectId: number) {
 export async function uploadFileRequest(
   token: string,
   file: File,
-): Promise<{ url: string; fileName: string }> {
+): Promise<{ url: string; fileName: string; mimeType: string; sizeBytes: number }> {
   const formData = new FormData();
   formData.append("file", file);
 

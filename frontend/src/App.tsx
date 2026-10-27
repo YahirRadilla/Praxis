@@ -90,6 +90,7 @@ function App() {
           }
         />
         <Route path="/proyectos/:id" element={<ProjectDetail />} />
+        <Route path="/proyectos/:id/actividades/:activityId" element={<ProjectDetail />} />
         <Route
           path="/proyectos/:id/editar"
           element={

@@ -23,11 +23,13 @@ import { useAuth } from "../context/AuthContext";
 import type { Activity, ActivityPriority, ActivityStatus } from "../types/activity";
 import { computeMoveResult } from "../components/activities/reorderActivities";
 
-export function useActivities(projectId: number) {
+export function useActivities(projectId: number, options: { enabled?: boolean } = {}) {
+  const { token, user } = useAuth();
+  const { enabled = true } = options;
   return useQuery({
-    queryKey: ["activities", projectId],
-    queryFn: () => listActivitiesRequest(projectId),
-    enabled: Number.isFinite(projectId),
+    queryKey: ["activities", projectId, user?.id ?? "anon"],
+    queryFn: () => listActivitiesRequest(projectId, token),
+    enabled: Number.isFinite(projectId) && enabled,
   });
 }
 

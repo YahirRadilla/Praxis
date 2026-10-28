@@ -5,10 +5,9 @@ import {
   getProjectRequest,
   listMyProjectsRequest,
   listSavedProjectsRequest,
-  publishProjectRequest,
   saveProjectRequest,
   searchProjectsRequest,
-  submitProjectForReviewRequest,
+  unarchiveProjectRequest,
   unsaveProjectRequest,
   updateProjectRequest,
   type UpdateProjectPayload,
@@ -24,9 +23,10 @@ export function useSearchProjects(params: SearchProjectsParams) {
 }
 
 export function useProject(id: number) {
+  const { token, user } = useAuth();
   return useQuery({
-    queryKey: ["project", id],
-    queryFn: () => getProjectRequest(id),
+    queryKey: ["project", id, user?.id ?? "anon"],
+    queryFn: () => getProjectRequest(id, token),
     enabled: Number.isFinite(id),
   });
 }
@@ -52,35 +52,23 @@ export function useUpdateProject(id: number) {
   });
 }
 
-export function usePublishProject(id: number) {
-  const { token } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => publishProjectRequest(token!, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
-}
-
-export function useSubmitForReview(id: number) {
-  const { token } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => submitProjectForReviewRequest(token!, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
-}
-
 export function useArchiveProject(id: number) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => archiveProjectRequest(token!, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useUnarchiveProject(id: number) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unarchiveProjectRequest(token!, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });

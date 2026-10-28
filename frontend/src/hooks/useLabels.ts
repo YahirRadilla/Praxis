@@ -3,9 +3,10 @@ import { createLabelRequest, listLabelsRequest } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export function useLabels(projectId: number) {
+  const { token, user } = useAuth();
   return useQuery({
-    queryKey: ["labels", projectId],
-    queryFn: () => listLabelsRequest(projectId),
+    queryKey: ["labels", projectId, user?.id ?? "anon"],
+    queryFn: () => listLabelsRequest(projectId, token),
     enabled: Number.isFinite(projectId),
   });
 }

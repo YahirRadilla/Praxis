@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Lateral, LateralCard } from "../LayoutPrimitives";
 import type { Activity, ProgressUpdate } from "../../types/activity";
 import type { TeamMember } from "../../types/team";
-import type { ProjectStatus } from "../../types/project";
 import ActivityBoard from "./ActivityBoard";
 import ActivityTable from "./ActivityTable";
 import Skeleton from "../Skeleton";
@@ -50,7 +49,7 @@ interface ActivitiesTabProps {
   progressUpdates: ProgressUpdate[] | undefined;
   isMember: boolean;
   doneCount: number;
-  projectStatus: ProjectStatus;
+  archived: boolean;
   isProjectOwner: boolean;
 }
 
@@ -59,14 +58,14 @@ function ActivitiesTab({
   activities,
   team,
   isMember,
-  projectStatus,
+  archived,
   isProjectOwner,
 }: ActivitiesTabProps) {
   // TO_VALIDATE counts as not-done; recomputed fresh here instead of trusting
   // the `doneCount` prop, which predates the TO_VALIDATE status.
   const done = activities?.filter((a) => a.status === "DONE").length ?? 0;
   const total = activities?.length ?? 0;
-  const readOnly = !isMember || projectStatus === "ARCHIVED";
+  const readOnly = !isMember || archived;
   const [view, setView] = useState<ActivitiesView>(readStoredView);
 
   function handleViewChange(next: ActivitiesView) {

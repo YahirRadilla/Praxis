@@ -1,4 +1,4 @@
-import type { ProjectPersonRef, Sdg } from "./project";
+import type { Project, ProjectPersonRef, Sdg } from "./project";
 
 export interface Challenge {
   id: number;
@@ -7,8 +7,12 @@ export interface Challenge {
   deadline: string | null;
   createdAt: string;
   organizationId: number;
-  organization: ProjectPersonRef;
+  // Explicit exception to WU-13 (plan decision #11): a Reto's organization
+  // email stays public contact info, so it's always present here, unlike
+  // the general `ProjectPersonRef.email`.
+  organization: ProjectPersonRef & { email: string };
   sdgs: { challengeId: number; sdgId: number; sdg: Sdg }[];
+  projects: Project[];
 }
 
 export interface CreateChallengePayload {

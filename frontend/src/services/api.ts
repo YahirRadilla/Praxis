@@ -2,8 +2,10 @@ import type { AuthResponse, AuthUser, LoginPayload, RegisterPayload } from "../t
 import type {
   Category,
   CreateProjectPayload,
+  CreateProjectResourcePayload,
   Project,
   ProjectPersonRef,
+  ProjectResource,
   SearchProjectsParams,
   Sdg,
 } from "../types/project";
@@ -24,6 +26,8 @@ import type {
 } from "../types/activity";
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 import type { Dictamen, DictamenVerdict } from "../types/dictamen";
+import type { Notification } from "../types/notification";
+import type { ImpactStats } from "../types/impact";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -131,32 +135,35 @@ export function searchProjectsRequest(params: SearchProjectsParams) {
   });
 }
 
-export function getProjectRequest(id: number) {
-  return request<Project>(`/api/projects/${id}`);
+export function getProjectRequest(id: number, token?: string | null) {
+  return request<Project>(`/api/projects/${id}`, { token });
 }
 
+export function getImpactRequest() {
+  return request<ImpactStats>("/api/impact");
+}
+
+// `teacherId`/`organizationId` are never accepted here (plan §2 decision #6):
+// the backend's `PATCH /projects/:id` is `.strict()` and 400s on them. The
+// only way to link an evaluator is accepting an EVALUATOR `TeamRequest`
+// (WU-05/WU-08). `evaluatorInviteIds` is create-only, so it's omitted too.
 export type UpdateProjectPayload = Partial<
-  Omit<CreateProjectPayload, "teacherId" | "organizationId" | "challengeId">
+  Omit<CreateProjectPayload, "evaluatorInviteIds" | "challengeId">
 > & {
-  teacherId?: number | null;
-  organizationId?: number | null;
   challengeId?: number | null;
+  extendedInfo?: string | null;
 };
 
 export function updateProjectRequest(token: string, id: number, payload: UpdateProjectPayload) {
   return request<Project>(`/api/projects/${id}`, { method: "PATCH", token, body: payload });
 }
 
-export function publishProjectRequest(token: string, id: number) {
-  return request<Project>(`/api/projects/${id}/publish`, { method: "POST", token });
-}
-
-export function submitProjectForReviewRequest(token: string, id: number) {
-  return request<Project>(`/api/projects/${id}/submit-review`, { method: "POST", token });
-}
-
 export function archiveProjectRequest(token: string, id: number) {
   return request<Project>(`/api/projects/${id}/archive`, { method: "POST", token });
+}
+
+export function unarchiveProjectRequest(token: string, id: number) {
+  return request<Project>(`/api/projects/${id}/unarchive`, { method: "POST", token });
 }
 
 export function requestToJoinRequest(token: string, projectId: number, message?: string) {
@@ -171,11 +178,16 @@ export function listPendingRequestsRequest(token: string, projectId: number) {
   return request<TeamRequest[]>(`/api/projects/${projectId}/team-requests`, { token });
 }
 
-export function inviteToTeamRequest(token: string, projectId: number, userId: number) {
+export function inviteToTeamRequest(
+  token: string,
+  projectId: number,
+  userId: number,
+  purpose?: "MEMBER" | "EVALUATOR",
+) {
   return request<TeamRequest>(`/api/projects/${projectId}/team-requests/invite`, {
     method: "POST",
     token,
-    body: { userId },
+    body: { userId, purpose },
   });
 }
 
@@ -191,8 +203,22 @@ export function respondToRequestRequest(
   });
 }
 
-export function listTeamRequest(projectId: number) {
-  return request<TeamMember[]>(`/api/projects/${projectId}/team`);
+export function listTeamRequest(projectId: number, token?: string | null) {
+  return request<TeamMember[]>(`/api/projects/${projectId}/team`, { token });
+}
+
+export function leaveTeamRequest(token: string, projectId: number) {
+  return request<{ success: boolean }>(`/api/projects/${projectId}/team/me`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function removeTeamMemberRequest(token: string, projectId: number, userId: number) {
+  return request<{ success: boolean }>(`/api/projects/${projectId}/team/${userId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export function createActivityRequest(
@@ -215,8 +241,8 @@ export function createActivityRequest(
   });
 }
 
-export function listActivitiesRequest(projectId: number) {
-  return request<Activity[]>(`/api/projects/${projectId}/activities`);
+export function listActivitiesRequest(projectId: number, token?: string | null) {
+  return request<Activity[]>(`/api/projects/${projectId}/activities`, { token });
 }
 
 export function listMyActivitiesRequest(
@@ -410,10 +436,35 @@ export function deleteActivityAttachmentRequest(
   );
 }
 
+// --- Project resources (Anexos) -------------------------------------------------
+
+export function createProjectResourceRequest(
+  token: string,
+  projectId: number,
+  payload: CreateProjectResourcePayload,
+) {
+  return request<ProjectResource>(`/api/projects/${projectId}/resources`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function listProjectResourcesRequest(projectId: number, token?: string | null) {
+  return request<ProjectResource[]>(`/api/projects/${projectId}/resources`, { token });
+}
+
+export function deleteProjectResourceRequest(token: string, projectId: number, resourceId: number) {
+  return request<void>(`/api/projects/${projectId}/resources/${resourceId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 // --- Labels --------------------------------------------------------------------
 
-export function listLabelsRequest(projectId: number) {
-  return request<ActivityLabel[]>(`/api/projects/${projectId}/labels`);
+export function listLabelsRequest(projectId: number, token?: string | null) {
+  return request<ActivityLabel[]>(`/api/projects/${projectId}/labels`, { token });
 }
 
 export function createLabelRequest(
@@ -445,8 +496,8 @@ export function createProgressUpdateRequest(
   });
 }
 
-export function listProgressUpdatesRequest(projectId: number) {
-  return request<ProgressUpdate[]>(`/api/projects/${projectId}/progress-updates`);
+export function listProgressUpdatesRequest(projectId: number, token?: string | null) {
+  return request<ProgressUpdate[]>(`/api/projects/${projectId}/progress-updates`, { token });
 }
 
 export async function uploadFileRequest(
@@ -466,8 +517,8 @@ export async function uploadFileRequest(
   return res.json();
 }
 
-export function listFeedRequest() {
-  return request<FeedUpdate[]>("/api/feed");
+export function listFeedRequest(params: { categoryId?: number } = {}) {
+  return request<FeedUpdate[]>("/api/feed", { query: { categoryId: params.categoryId } });
 }
 
 export function listMyProjectsRequest(token: string) {
@@ -524,6 +575,27 @@ export function createDictamenRequest(
   });
 }
 
-export function listDictamenesRequest(projectId: number) {
-  return request<Dictamen[]>(`/api/projects/${projectId}/dictamenes`);
+export function listDictamenesRequest(projectId: number, token?: string | null) {
+  return request<Dictamen[]>(`/api/projects/${projectId}/dictamenes`, { token });
+}
+
+// --- Notifications -------------------------------------------------------------
+
+export function listNotificationsRequest(token: string, params: { unreadOnly?: boolean } = {}) {
+  return request<Notification[]>("/api/notifications", {
+    token,
+    query: { unreadOnly: params.unreadOnly ? "true" : undefined },
+  });
+}
+
+export function getUnreadCountRequest(token: string) {
+  return request<{ count: number }>("/api/notifications/unread-count", { token });
+}
+
+export function markNotificationReadRequest(token: string, id: number) {
+  return request<void>(`/api/notifications/${id}/read`, { method: "PATCH", token });
+}
+
+export function markAllNotificationsReadRequest(token: string) {
+  return request<void>("/api/notifications/read-all", { method: "POST", token });
 }

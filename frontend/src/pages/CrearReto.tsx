@@ -67,7 +67,7 @@ function CrearReto() {
                 type="text"
                 {...register("title")}
                 className={`${FIELD_CLASS} ${
-                  errors.title ? "border-red-400 focus:outline-red-400" : "border-rule focus:outline-accent-primary"
+                  errors.title ? "border-danger focus:outline-danger" : "border-rule focus:outline-accent-primary"
                 }`}
               />
               <FieldError message={errors.title?.message} />
@@ -80,7 +80,7 @@ function CrearReto() {
                 {...register("description")}
                 className={`${FIELD_CLASS} resize-none ${
                   errors.description
-                    ? "border-red-400 focus:outline-red-400"
+                    ? "border-danger focus:outline-danger"
                     : "border-rule focus:outline-accent-primary"
                 }`}
               />

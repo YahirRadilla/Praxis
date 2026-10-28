@@ -12,6 +12,16 @@ function TeamRequestRow({
   onReject: () => void;
   projectName?: string;
 }) {
+  // Only invitations (initiatedBy "OWNER") get a purpose badge here: a join
+  // request (initiatedBy "REQUESTER") is always purpose MEMBER (plan §5,
+  // WU-08), so labeling it would be redundant.
+  const inviteLabel =
+    request.initiatedBy === "OWNER"
+      ? request.purpose === "EVALUATOR"
+        ? "Te invitan como evaluador"
+        : "Te invitan como integrante"
+      : null;
+
   return (
     <div className={`flex gap-3 bg-paper border border-rule rounded-lg p-3.5 ${CARD_SHADOW}`}>
       <span
@@ -23,7 +33,12 @@ function TeamRequestRow({
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <span className="font-heading text-[14px] font-bold text-ink">{request.user.name}</span>
         {projectName && <span className="text-[11.5px] text-accent-primary font-semibold">{projectName}</span>}
-        <span className="text-[11.5px] text-ink-faint">{request.user.email}</span>
+        {inviteLabel && (
+          <span className="text-[11px] font-semibold text-accent-primary">{inviteLabel}</span>
+        )}
+        {request.user.email && (
+          <span className="text-[11.5px] text-ink-faint">{request.user.email}</span>
+        )}
         {request.message && (
           <p className="text-[12.5px] text-ink-soft leading-relaxed m-0">{request.message}</p>
         )}

@@ -79,8 +79,7 @@ function ActivityCardMenu({ projectId, activity, isProjectOwner, onMoved }: Acti
               <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-[12.5px] text-left cursor-pointer data-[focus]:bg-surface-ground"
-                style={{ color: "#A21942" }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-[12.5px] text-left cursor-pointer text-danger data-[focus]:bg-surface-ground"
               >
                 <Trash size={14} />
                 Borrar

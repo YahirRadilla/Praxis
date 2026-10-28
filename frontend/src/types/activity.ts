@@ -1,4 +1,4 @@
-import type { ProjectStatus, ProjectVisibility } from "./project";
+import type { Category, ProjectVisibility, Sdg } from "./project";
 
 export type ActivityStatus = "PENDING" | "IN_PROGRESS" | "TO_VALIDATE" | "DONE" | "OVERDUE";
 export type ActivityPriority = "BAJA" | "MEDIA" | "ALTA";
@@ -120,7 +120,7 @@ export interface ActivityDetail {
   comments: ActivityComment[];
   attachments: ActivityAttachment[];
   events: ActivityEvent[];
-  project: { id: number; status: ProjectStatus; ownerId: number; visibility: ProjectVisibility };
+  project: { id: number; archived: boolean; ownerId: number; visibility: ProjectVisibility };
 }
 
 /**
@@ -143,7 +143,7 @@ export interface MyActivity {
   createdAt: string;
   updatedAt: string;
   labels: ActivityLabelLink[];
-  project: { id: number; name: string; status: ProjectStatus };
+  project: { id: number; name: string; archived: boolean };
 }
 
 export interface Evidence {
@@ -173,6 +173,7 @@ export interface FeedUpdate extends ProgressUpdate {
   project: {
     id: number;
     name: string;
-    sdgs: { projectId: number; sdgId: number; sdg: { id: number; name: string; colorHex: string } }[];
+    sdgs: { projectId: number; sdgId: number; sdg: Sdg }[];
+    categories: { projectId: number; categoryId: number; category: Category }[];
   };
 }

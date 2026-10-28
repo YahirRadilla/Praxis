@@ -18,7 +18,6 @@ import {
 } from "@phosphor-icons/react";
 import type { ActivityPriority, ChecklistItem, ChecklistSection } from "../../types/activity";
 import type { TeamMember } from "../../types/team";
-import type { ProjectStatus } from "../../types/project";
 import { useAuth } from "../../context/AuthContext";
 import DatePicker from "../DatePicker";
 import ConfirmDialog from "../ConfirmDialog";
@@ -77,8 +76,9 @@ interface ActivityDetailModalProps {
   activityId: number;
   team: TeamMember[];
   isMember: boolean;
+  isEvaluator: boolean;
   isProjectOwner: boolean;
-  projectStatus: ProjectStatus;
+  archived: boolean;
   onClose: () => void;
 }
 
@@ -87,8 +87,9 @@ function ActivityDetailModal({
   activityId,
   team,
   isMember,
+  isEvaluator,
   isProjectOwner,
-  projectStatus,
+  archived,
   onClose,
 }: ActivityDetailModalProps) {
   const { user } = useAuth();
@@ -124,7 +125,17 @@ function ActivityDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.id]);
 
-  const readOnly = !isMember || projectStatus === "ARCHIVED";
+  // WU-11 / decisión 10-8: `readOnly` locks every board field (title,
+  // description, checklist, due date, assignees, labels, attachments,
+  // delete) for anyone who isn't an accepted member, and for everyone once
+  // the project is archived — this includes a confirmed evaluator, who is
+  // never a member.
+  const readOnly = !isMember || archived;
+  // A confirmed evaluator who isn't a member can still comment while the
+  // project isn't archived (they can read everything, post their own
+  // comment, but never move/edit/attach/check). Archiving locks comments
+  // for everyone, members and evaluators alike.
+  const canComment = !archived && (isMember || isEvaluator);
   const canDelete = !readOnly && (isProjectOwner || activity?.ownerId === user?.id);
 
   function handleClose() {
@@ -526,13 +537,17 @@ function ActivityDetailModal({
                           <a href={att.url} target="_blank" rel="noreferrer" className="text-ink-faint hover:text-ink shrink-0">
                             <DownloadSimple size={14} />
                           </a>
-                          {!readOnly && (
+                          {/* Matches the backend's exact rule
+                              (activity.service.ts's deleteActivityAttachment):
+                              only the uploader or the project owner can
+                              delete, never any team member (WU-09). */}
+                          {!readOnly && (att.uploaderId === user?.id || isProjectOwner) && (
                             <button
                               type="button"
                               onClick={() =>
                                 setDeleteTarget({ kind: "attachment", id: att.id, fileName: att.fileName })
                               }
-                              className="text-ink-faint hover:text-[#A21942] cursor-pointer shrink-0"
+                              className="text-ink-faint hover:text-danger cursor-pointer shrink-0"
                               aria-label="Borrar adjunto"
                             >
                               <Trash size={14} />
@@ -563,7 +578,7 @@ function ActivityDetailModal({
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-[11px] text-ink-faint">{formatDateTime(c.createdAt)}</span>
-                              {c.authorId === user?.id && !readOnly && (
+                              {c.authorId === user?.id && canComment && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -572,7 +587,7 @@ function ActivityDetailModal({
                                         toast.error(getErrorMessage(error, "No se pudo borrar el comentario.")),
                                     })
                                   }
-                                  className="text-[11px] text-ink-faint hover:text-[#A21942] cursor-pointer"
+                                  className="text-[11px] text-ink-faint hover:text-danger cursor-pointer"
                                 >
                                   Borrar
                                 </button>
@@ -585,7 +600,7 @@ function ActivityDetailModal({
                         <p className="text-[12.5px] text-ink-faint m-0">Todavía no hay comentarios.</p>
                       )}
                     </div>
-                    {!readOnly && (
+                    {canComment && (
                       <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-1">
                         <input
                           type="text"
@@ -643,8 +658,7 @@ function ActivityDetailModal({
                     <button
                       type="button"
                       onClick={handleDeleteActivity}
-                      className="flex items-center gap-1.5 text-[12.5px] font-semibold cursor-pointer"
-                      style={{ color: "#A21942" }}
+                      className="flex items-center gap-1.5 text-[12.5px] font-semibold cursor-pointer text-danger"
                     >
                       <Trash size={14} />
                       Borrar actividad
@@ -750,7 +764,7 @@ function ChecklistSectionBlock({
           <button
             type="button"
             onClick={onDeleteSection}
-            className="text-ink-faint hover:text-[#A21942] cursor-pointer shrink-0"
+            className="text-ink-faint hover:text-danger cursor-pointer shrink-0"
             aria-label="Borrar sección"
           >
             <Trash size={13} />
@@ -932,7 +946,7 @@ function ChecklistItemRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-ink-faint hover:text-[#A21942] cursor-pointer shrink-0 mt-0.5"
+          className="text-ink-faint hover:text-danger cursor-pointer shrink-0 mt-0.5"
           aria-label="Borrar pendiente"
         >
           <Trash size={12} />

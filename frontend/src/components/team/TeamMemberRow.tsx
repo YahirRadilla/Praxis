@@ -7,7 +7,14 @@ const ROLE_LABELS: Record<string, string> = {
   ORGANIZATION: "Organización",
 };
 
-function TeamMemberRow({ member }: { member: TeamMember }) {
+interface TeamMemberRowProps {
+  member: TeamMember;
+  /** Owner-only "Quitar" action (WU-09). Omitted entirely for the owner's
+   * own row — the owner can't remove themself through this endpoint. */
+  onRemove?: () => void;
+}
+
+function TeamMemberRow({ member, onRemove }: TeamMemberRowProps) {
   return (
     <div className="flex items-center gap-3 py-[18px] px-3 border-b border-rule">
       <span
@@ -18,7 +25,9 @@ function TeamMemberRow({ member }: { member: TeamMember }) {
       </span>
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <span className="text-[13.5px] font-semibold text-ink truncate">{member.name}</span>
-        <span className="text-[11.5px] text-ink-faint truncate">{member.email}</span>
+        {member.email && (
+          <span className="text-[11.5px] text-ink-faint truncate">{member.email}</span>
+        )}
       </div>
       <span
         style={{ color: "#3F7E44", backgroundColor: "#EAF4EA" }}
@@ -26,6 +35,15 @@ function TeamMemberRow({ member }: { member: TeamMember }) {
       >
         {ROLE_LABELS[member.role] ?? member.role}
       </span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-[11.5px] font-semibold text-ink-faint hover:text-danger cursor-pointer shrink-0"
+        >
+          Quitar
+        </button>
+      )}
     </div>
   );
 }

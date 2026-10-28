@@ -9,6 +9,7 @@ node_modules/
 dist/
 .env
 .env.local
+backend/.env.test
 *.log
 .DS_Store
 backend/uploads/

@@ -18,15 +18,6 @@ enum AccountType {
   INDEPENDENT
 }
 
-enum ProjectStatus {
-  DRAFT
-  PUBLISHED
-  IN_PROGRESS
-  IN_REVIEW
-  COMPLETED
-  ARCHIVED
-}
-
 enum ProjectVisibility {
   PUBLIC
   PRIVATE
@@ -35,8 +26,11 @@ enum ProjectVisibility {
 enum TeamRequestRole {
   OWNER
   COLLABORATOR
-  TEACHER
-  ORGANIZATION
+}
+
+enum TeamRequestPurpose {
+  MEMBER
+  EVALUATOR
 }
 
 enum TeamRequestStatus {
@@ -75,6 +69,14 @@ enum ActivityPriority {
   ALTA
 }
 
+enum NotificationType {
+  TEAM_REQUEST_RECEIVED
+  TEAM_REQUEST_ACCEPTED
+  TEAM_INVITE_RECEIVED
+  ACTIVITY_ASSIGNED
+  DICTAMEN_SUBMITTED
+}
+
 model User {
   id              Int         @id @default(autoincrement())
   email           String      @unique
@@ -103,6 +105,8 @@ model User {
   checklistItemsCompleted  ChecklistItem[]
   activityAttachments      ActivityAttachment[]
   activityComments         ActivityComment[]
+  notifications            Notification[]
+  projectResources         ProjectResource[]
 
   @@map("users")
 }
@@ -162,8 +166,13 @@ model Project {
   description      String
   problemStatement String
   objectives       String
-  status           ProjectStatus     @default(DRAFT)
-  visibility       ProjectVisibility @default(PUBLIC)
+  // Free-text writeup (methodology, acknowledgments, anything that doesn't
+  // fit the structured fields above) shown in the Anexos tab. Editable by
+  // any project member, unlike the rest of this model's fields.
+  extendedInfo     String?
+  visibility       ProjectVisibility @default(PRIVATE)
+  archived         Boolean           @default(false)
+  archivedAt       DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -187,7 +196,9 @@ model Project {
   savedBy         SavedProject[]
   dictamenes      Dictamen[]
   labels          ProjectLabel[]
+  resources       ProjectResource[]
 
+  @@index([visibility, archived])
   @@map("projects")
 }
 
@@ -217,7 +228,8 @@ model TeamRequest {
   id          Int                  @id @default(autoincrement())
   projectId   Int
   userId      Int
-  role        TeamRequestRole
+  role        TeamRequestRole      @default(COLLABORATOR)
+  purpose     TeamRequestPurpose   @default(MEMBER)
   status      TeamRequestStatus    @default(PENDING)
   initiatedBy TeamRequestInitiator @default(REQUESTER)
   message     String?
@@ -316,7 +328,12 @@ model Dictamen {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   evaluator User    @relation("DictamenEvaluator", fields: [evaluatorId], references: [id])
 
-  @@unique([projectId, evaluatorId])
+  // Append-only, non-binding feedback history: a confirmed evaluator can leave
+  // a Dictamen whenever the project isn't archived, as many times as they
+  // want, independently of any other evaluator. There are no review cycles
+  // and a Dictamen never changes the project's visibility/archived state —
+  // it's purely informational for the owner/team, visible only to insiders.
+  @@index([projectId])
   @@map("dictamenes")
 }
 
@@ -428,4 +445,41 @@ model ActivityLabel {
 
   @@id([activityId, labelId])
   @@map("activity_labels")
+}
+
+// Anexos tab: docs/links/photos a project's team attaches beyond the
+// structured description/problemStatement/objectives fields. Reuses
+// EvidenceType (FILE | LINK) since its two values apply unchanged here.
+model ProjectResource {
+  id          Int          @id @default(autoincrement())
+  projectId   Int
+  creatorId   Int
+  type        EvidenceType
+  url         String
+  fileName    String?
+  mimeType    String?
+  sizeBytes   Int?
+  label       String
+  description String?
+  createdAt   DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator User    @relation(fields: [creatorId], references: [id])
+
+  @@map("project_resources")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  message   String
+  link      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
 }

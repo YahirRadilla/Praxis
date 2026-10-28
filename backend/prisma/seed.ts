@@ -1,9 +1,10 @@
 import {
   PrismaClient,
   AccountType,
-  ProjectStatus,
   ProjectVisibility,
   TeamRequestRole,
+  TeamRequestPurpose,
+  TeamRequestInitiator,
   TeamRequestStatus,
   ActivityStatus,
   ActivityPriority,
@@ -111,6 +112,38 @@ async function ensureTeamMember(
       status,
       message,
       resolvedAt: status === TeamRequestStatus.ACCEPTED ? new Date() : null,
+    },
+  });
+}
+
+/**
+ * Demo evaluator link: real evaluator links only ever come from an accepted
+ * EVALUATOR TeamRequest (WU-05's consent flow); seed data is allowed to set
+ * up that already-accepted state directly since it never goes through the
+ * real invitation/consent validation. Pairs with the `teacher`/
+ * `organization` direct connect already set on the project.
+ *
+ * Forces the EVALUATOR state on `update` too (not just `create`): because of
+ * `@@unique([projectId, userId])`, a pre-existing row for this pair (e.g. a
+ * leftover MEMBER request from earlier manual testing, migrated to
+ * `purpose: MEMBER` by the WU-04 migration's column default) would otherwise
+ * be left untouched by the upsert and silently block the intended evaluator
+ * link.
+ */
+async function ensureEvaluatorLink(projectId: number, userId: number) {
+  const evaluatorState = {
+    purpose: TeamRequestPurpose.EVALUATOR,
+    status: TeamRequestStatus.ACCEPTED,
+    initiatedBy: TeamRequestInitiator.OWNER,
+    resolvedAt: new Date(),
+  };
+  await prisma.teamRequest.upsert({
+    where: { projectId_userId: { projectId, userId } },
+    update: evaluatorState,
+    create: {
+      projectId,
+      userId,
+      ...evaluatorState,
     },
   });
 }
@@ -283,11 +316,13 @@ async function ensureDictamen(
   verdict: DictamenVerdict,
   comment: string,
 ) {
-  await prisma.dictamen.upsert({
-    where: { projectId_evaluatorId: { projectId, evaluatorId } },
-    update: {},
-    create: { projectId, evaluatorId, verdict, comment },
-  });
+  // Dictamen has no unique constraint on (projectId, evaluatorId) anymore
+  // (append-only feedback history, dropped in `drop_dictamen_unique_constraint`),
+  // so `upsert` can't target it by that compound key. Use findFirst+create
+  // to stay idempotent across repeated seed runs instead.
+  const existing = await prisma.dictamen.findFirst({ where: { projectId, evaluatorId, comment } });
+  if (existing) return existing;
+  return prisma.dictamen.create({ data: { projectId, evaluatorId, verdict, comment } });
 }
 
 async function main() {
@@ -489,19 +524,11 @@ async function main() {
     description: "Plataforma para coordinar puntos de acopio de reciclaje dentro del campus.",
     problemStatement: "El campus no tiene un sistema centralizado para gestionar el reciclaje de residuos.",
     objectives: "Reducir en 30% los residuos no separados durante el primer semestre de operación.",
-    status: ProjectStatus.PUBLISHED,
     visibility: ProjectVisibility.PUBLIC,
     owner: { connect: { id: student.id } },
     teacher: { connect: { id: teacher.id } },
     organization: { connect: { id: organization.id } },
   });
-
-  if (project.status === ProjectStatus.PUBLISHED) {
-    await prisma.project.update({
-      where: { id: project.id },
-      data: { status: ProjectStatus.IN_PROGRESS },
-    });
-  }
 
   console.log("Linking project to SDGs 11 and 12...");
   await linkSdg(project.id, 11);
@@ -509,6 +536,19 @@ async function main() {
 
   console.log("Linking project to its category...");
   await linkCategory(project.id, 9); // Sustentabilidad y Medio Ambiente
+
+  console.log("Seeding accepted evaluator links (teacher + organization)...");
+  // `findOrCreateProject` only writes on first insert, and the WU-04
+  // migration clears every project's teacherId/organizationId directly in
+  // the DB (uncounseted pre-existing links), so an already-seeded project
+  // needs these fields re-applied explicitly on every seed run, alongside
+  // the accepted EVALUATOR TeamRequest row that is the real consent record.
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { teacherId: teacher.id, organizationId: organization.id },
+  });
+  await ensureEvaluatorLink(project.id, teacher.id);
+  await ensureEvaluatorLink(project.id, organization.id);
 
   console.log("Seeding a team request...");
   await ensureTeamMember(
@@ -530,7 +570,6 @@ async function main() {
     problemStatement:
       "Las prótesis y brazos asistivos comerciales son inaccesibles económicamente para la mayoría de las familias de la región.",
     objectives: "Construir un prototipo funcional con componentes impresos en 3D y control por sensores de bajo costo.",
-    status: ProjectStatus.IN_PROGRESS,
     visibility: ProjectVisibility.PUBLIC,
     owner: { connect: { id: jorge.id } },
     teacher: { connect: { id: valeria.id } },
@@ -543,7 +582,6 @@ async function main() {
     problemStatement:
       "El crecimiento turístico de la zona no cuenta con rutas que distribuyan la afluencia y protejan los ecosistemas costeros.",
     objectives: "Publicar una ruta y folleto bilingüe validado por prestadores de servicios turísticos locales.",
-    status: ProjectStatus.IN_PROGRESS,
     visibility: ProjectVisibility.PUBLIC,
     owner: { connect: { id: sofia.id } },
     teacher: { connect: { id: teacher.id } },
@@ -554,7 +592,6 @@ async function main() {
     description: "Propuesta de vivienda modular con materiales regionales para familias de bajos ingresos en la península.",
     problemStatement: "El déficit de vivienda asequible en la región crece más rápido que la oferta de soluciones sustentables.",
     objectives: "Entregar un modelo arquitectónico y un presupuesto preliminar validado con costos reales de la región.",
-    status: ProjectStatus.PUBLISHED,
     visibility: ProjectVisibility.PUBLIC,
     owner: { connect: { id: mariana.id } },
     teacher: { connect: { id: teacher.id } },
@@ -567,7 +604,6 @@ async function main() {
       description: "Aplicación móvil para consultar el valor nutricional de los menús ofrecidos en cafeterías del campus.",
       problemStatement: "Los estudiantes no tienen acceso claro a información nutricional de lo que consumen en el campus.",
       objectives: "Lanzar una versión beta con el menú de al menos una cafetería piloto.",
-      status: ProjectStatus.PUBLISHED,
       visibility: ProjectVisibility.PUBLIC,
       owner: { connect: { id: diego.id } },
       teacher: { connect: { id: valeria.id } },
@@ -582,8 +618,7 @@ async function main() {
         "Recopilación de recetas tradicionales de Baja California Sur que privilegian ingredientes locales y el aprovechamiento integral de los alimentos.",
       problemStatement: "El conocimiento gastronómico regional se está perdiendo y gran parte de los alimentos se desperdicia en la preparación tradicional.",
       objectives: "Documentar al menos 15 recetas regionales con su versión de bajo desperdicio.",
-      status: ProjectStatus.DRAFT,
-      visibility: ProjectVisibility.PUBLIC,
+      visibility: ProjectVisibility.PRIVATE,
       owner: { connect: { id: renata.id } },
     },
   );
@@ -597,6 +632,16 @@ async function main() {
   await linkCategory(healthyMenuApp.id, 11); // Salud y Bienestar
   await linkCategory(regionalCookbook.id, 22); // Gastronomía
   await linkCategory(regionalCookbook.id, 9); // Sustentabilidad y Medio Ambiente
+
+  console.log("Seeding accepted evaluator links for new projects...");
+  await prisma.project.update({ where: { id: roboticArm.id }, data: { teacherId: valeria.id } });
+  await prisma.project.update({ where: { id: touristRoute.id }, data: { teacherId: teacher.id } });
+  await prisma.project.update({ where: { id: modularHousing.id }, data: { teacherId: teacher.id } });
+  await prisma.project.update({ where: { id: healthyMenuApp.id }, data: { teacherId: valeria.id } });
+  await ensureEvaluatorLink(roboticArm.id, valeria.id);
+  await ensureEvaluatorLink(touristRoute.id, teacher.id);
+  await ensureEvaluatorLink(modularHousing.id, teacher.id);
+  await ensureEvaluatorLink(healthyMenuApp.id, valeria.id);
 
   console.log("Seeding team memberships for new projects...");
   await ensureTeamMember(

@@ -10,6 +10,7 @@ export const respondTeamRequestSchema = z.object({
 
 export const inviteToTeamSchema = z.object({
   userId: z.number().int(),
+  purpose: z.enum(["MEMBER", "EVALUATOR"]).default("MEMBER"),
 });
 
 export type CreateTeamRequestInput = z.infer<typeof createTeamRequestSchema>;

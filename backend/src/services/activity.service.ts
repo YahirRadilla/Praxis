@@ -33,7 +33,8 @@ import {
 import { findProjectById } from "../repositories/project.repository";
 import { countProjectLabelsByIds } from "../repositories/label.repository";
 import { isProjectMember } from "./team-request.service";
-import { assertProjectReadable } from "./project.service";
+import { assertProjectInsider, assertProjectNotArchived } from "./project.service";
+import { notifyUser } from "./notification.service";
 import { HttpError } from "../types/http-error";
 import type {
   CreateActivityAttachmentInput,
@@ -65,9 +66,20 @@ async function assertActivityWritable(activity: ActivityWithProject, userId: num
   if (!member) {
     throw new HttpError(403, "Solo los integrantes del proyecto pueden modificar actividades.");
   }
-  if (activity.project.status === "ARCHIVED") {
-    throw new HttpError(409, "El proyecto está archivado; el tablero es de solo lectura.");
+  assertProjectNotArchived(activity.project);
+}
+
+// WU-10: the one board write an evaluator is allowed without being a team
+// member — commenting (plan decision #8). Every other write keeps using
+// assertActivityWritable (members only).
+async function assertCanComment(activity: ActivityWithProject, userId: number) {
+  const member = await isProjectMember(activity.projectId, userId);
+  const isEvaluator =
+    activity.project.teacherId === userId || activity.project.organizationId === userId;
+  if (!member && !isEvaluator) {
+    throw new HttpError(403, "Solo los integrantes del proyecto o el evaluador pueden comentar.");
   }
+  assertProjectNotArchived(activity.project);
 }
 
 function assertActivityDeletable(activity: ActivityWithProject, userId: number) {
@@ -100,9 +112,7 @@ export async function addActivity(projectId: number, userId: number, input: Crea
   if (!project) throw new HttpError(404, "Proyecto no encontrado.");
   const member = await isProjectMember(projectId, userId);
   if (!member) throw new HttpError(403, "Solo los integrantes del proyecto pueden crear actividades.");
-  if (project.status === "ARCHIVED") {
-    throw new HttpError(409, "El proyecto está archivado; el tablero es de solo lectura.");
-  }
+  assertProjectNotArchived(project);
 
   if (input.assigneeIds?.length) {
     await assertAssigneesAreMembers(projectId, input.assigneeIds);
@@ -123,13 +133,36 @@ export async function addActivity(projectId: number, userId: number, input: Crea
     toStatus: created.status,
   });
 
+  if (input.assigneeIds?.length) {
+    await notifyAssignees(input.assigneeIds, projectId, project.name, created.title, created.id);
+  }
+
   return created;
+}
+
+async function notifyAssignees(
+  assigneeIds: number[],
+  projectId: number,
+  projectName: string,
+  activityTitle: string,
+  activityId: number,
+) {
+  await Promise.all(
+    assigneeIds.map((assigneeId) =>
+      notifyUser(
+        assigneeId,
+        "ACTIVITY_ASSIGNED",
+        `Te asignaron la actividad "${activityTitle}" en el proyecto "${projectName}".`,
+        `/proyectos/${projectId}/actividades/${activityId}`,
+      ),
+    ),
+  );
 }
 
 export async function listActivities(projectId: number, requesterId?: number) {
   const project = await findProjectById(projectId);
   if (!project) throw new HttpError(404, "Proyecto no encontrado.");
-  await assertProjectReadable(project, requesterId);
+  await assertProjectInsider(project, requesterId);
   return listActivitiesByProject(projectId);
 }
 
@@ -142,7 +175,7 @@ export async function getActivityDetail(
   if (!activity || activity.projectId !== projectId) {
     throw new HttpError(404, "Actividad no encontrada.");
   }
-  await assertProjectReadable(activity.project, requesterId);
+  await assertProjectInsider(activity.project, requesterId);
   return activity;
 }
 
@@ -162,7 +195,21 @@ export async function updateActivity(
     await assertLabelsBelongToProject(projectId, input.labelIds);
   }
 
-  return updateActivityRepo(activityId, input);
+  const updated = await updateActivityRepo(activityId, input);
+
+  // Only notify assignees newly added by this update, not ones who were
+  // already assigned (cheap to tell apart here since we already have the
+  // pre-update assignee list loaded via loadActivityForWrite).
+  if (input.assigneeIds?.length) {
+    const previousAssigneeIds = new Set(activity.assignees.map((a) => a.userId));
+    const newlyAssignedIds = input.assigneeIds.filter((id) => !previousAssigneeIds.has(id));
+    if (newlyAssignedIds.length) {
+      const project = await findProjectById(projectId);
+      await notifyAssignees(newlyAssignedIds, projectId, project!.name, updated.title, activityId);
+    }
+  }
+
+  return updated;
 }
 
 export async function deleteActivity(projectId: number, activityId: number, userId: number) {
@@ -410,7 +457,7 @@ export async function addActivityComment(
   input: CreateActivityCommentInput,
 ) {
   const activity = await loadActivityForWrite(projectId, activityId);
-  await assertActivityWritable(activity, userId);
+  await assertCanComment(activity, userId);
 
   return createActivityComment({ activityId, authorId: userId, text: input.text });
 }

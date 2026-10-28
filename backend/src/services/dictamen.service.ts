@@ -1,12 +1,17 @@
 import {
   createDictamen as createDictamenRepo,
-  findDictamenByProjectAndEvaluator,
   listDictamenesByProject,
 } from "../repositories/dictamen.repository";
 import { findProjectById } from "../repositories/project.repository";
-import { assertProjectReadable } from "./project.service";
+import { assertProjectInsider, assertProjectNotArchived } from "./project.service";
+import { notifyUser } from "./notification.service";
 import { HttpError } from "../types/http-error";
 import type { CreateDictamenInput } from "../schemas/dictamen.schema";
+
+const VERDICT_LABEL: Record<CreateDictamenInput["verdict"], string> = {
+  APPROVED: "Aprobado",
+  CHANGES_REQUESTED: "Cambios solicitados",
+};
 
 export async function createDictamen(
   projectId: number,
@@ -25,16 +30,21 @@ export async function createDictamen(
     );
   }
 
-  if (project.status !== "IN_REVIEW") {
-    throw new HttpError(409, "Solo se puede emitir un dictamen mientras el proyecto está en evaluación.");
-  }
+  assertProjectNotArchived(project);
 
-  const existing = await findDictamenByProjectAndEvaluator(projectId, evaluatorId);
-  if (existing) {
-    throw new HttpError(409, "Ya emitiste un dictamen para este proyecto.");
-  }
+  // Non-gating feedback: the Dictamen is just a history row, independent of
+  // visibility/archived. Each evaluator can leave as many as they want, any
+  // time the project isn't archived.
+  const dictamen = await createDictamenRepo({ projectId, evaluatorId, ...input });
 
-  return createDictamenRepo({ projectId, evaluatorId, ...input });
+  await notifyUser(
+    project.ownerId,
+    "DICTAMEN_SUBMITTED",
+    `Tu proyecto "${project.name}" recibió retroalimentación de un evaluador: ${VERDICT_LABEL[input.verdict]}.`,
+    `/proyectos/${projectId}?tab=info`,
+  );
+
+  return dictamen;
 }
 
 export async function listDictamenes(projectId: number, requesterId?: number) {
@@ -42,7 +52,11 @@ export async function listDictamenes(projectId: number, requesterId?: number) {
   if (!project) {
     throw new HttpError(404, "Proyecto no encontrado.");
   }
-  await assertProjectReadable(project, requesterId);
+  // Plan decision #5 (default): dictamen text/history is visible only to
+  // insiders (owner, accepted member, or confirmed evaluator), never to the
+  // public — even on a PUBLIC project. An outsider gets 404, matching the
+  // activity board's privacy model (WU-10).
+  await assertProjectInsider(project, requesterId);
 
   return listDictamenesByProject(projectId);
 }

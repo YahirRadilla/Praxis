@@ -42,7 +42,16 @@ const activityFullInclude = {
     include: { actor: { select: { id: true, name: true } } },
     orderBy: { createdAt: "asc" },
   },
-  project: { select: { id: true, status: true, ownerId: true, visibility: true } },
+  project: {
+    select: {
+      id: true,
+      archived: true,
+      ownerId: true,
+      visibility: true,
+      teacherId: true,
+      organizationId: true,
+    },
+  },
 } satisfies Prisma.ActivityInclude;
 
 export interface CreateActivityData {
@@ -87,7 +96,16 @@ export function findActivityWithProject(id: number) {
     where: { id },
     include: {
       ...activityInclude,
-      project: { select: { id: true, status: true, ownerId: true, visibility: true } },
+      project: {
+        select: {
+          id: true,
+          archived: true,
+          ownerId: true,
+          visibility: true,
+          teacherId: true,
+          organizationId: true,
+        },
+      },
     },
   });
 }
@@ -302,6 +320,22 @@ export function deleteActivityAttachment(id: number) {
   return prisma.activityAttachment.delete({ where: { id } });
 }
 
+/**
+ * Unassigns a user from every Activity in a project — used when a MEMBER
+ * leaves or is removed from the team (plan §7 P5, WU-06). Only the
+ * assignment is removed: their comments, attachments, and progress updates
+ * stay intact.
+ */
+export function unassignUserFromProjectActivities(
+  projectId: number,
+  userId: number,
+  tx: TxClient = prisma,
+) {
+  return tx.activityAssignee.deleteMany({
+    where: { userId, activity: { projectId } },
+  });
+}
+
 // --- Cross-project "mis tareas" -------------------------------------------
 
 export interface ListMyActivitiesFilters {
@@ -317,14 +351,17 @@ export function listActivitiesAssignedToUser(userId: number, filters: ListMyActi
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.projectId ? { projectId: filters.projectId } : {}),
         project: {
-          OR: [{ ownerId: userId }, { teamRequests: { some: { userId, status: "ACCEPTED" } } }],
+          OR: [
+            { ownerId: userId },
+            { teamRequests: { some: { userId, status: "ACCEPTED", purpose: "MEMBER" } } },
+          ],
         },
       },
     },
     include: {
       activity: {
         include: {
-          project: { select: { id: true, name: true, status: true } },
+          project: { select: { id: true, name: true, archived: true } },
           labels: { include: { label: true } },
         },
       },

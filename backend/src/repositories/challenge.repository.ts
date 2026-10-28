@@ -1,9 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma-client";
+import { projectInclude } from "./project.repository";
 
 export const challengeInclude = {
   organization: { select: { id: true, name: true, email: true, accountType: true } },
   sdgs: { include: { sdg: true } },
+  projects: { include: projectInclude },
 } satisfies Prisma.ChallengeInclude;
 
 export interface CreateChallengeData {

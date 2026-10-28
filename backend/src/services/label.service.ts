@@ -8,21 +8,22 @@ import {
 } from "../repositories/label.repository";
 import { findProjectById } from "../repositories/project.repository";
 import { isProjectMember } from "./team-request.service";
-import { assertProjectReadable } from "./project.service";
+import { assertProjectInsider, assertProjectNotArchived } from "./project.service";
 import { HttpError } from "../types/http-error";
 import type { CreateLabelInput, UpdateLabelInput } from "../schemas/label.schema";
 
-async function assertCanManageLabels(projectId: number, userId: number) {
-  const member = await isProjectMember(projectId, userId);
+async function assertCanManageLabels(project: { id: number; archived: boolean }, userId: number) {
+  const member = await isProjectMember(project.id, userId);
   if (!member) {
     throw new HttpError(403, "Solo los integrantes del proyecto pueden gestionar etiquetas.");
   }
+  assertProjectNotArchived(project);
 }
 
 async function loadLabelForWrite(projectId: number, labelId: number, userId: number) {
   const project = await findProjectById(projectId);
   if (!project) throw new HttpError(404, "Proyecto no encontrado.");
-  await assertCanManageLabels(projectId, userId);
+  await assertCanManageLabels(project, userId);
 
   const label = await findProjectLabelById(labelId);
   if (!label || label.projectId !== projectId) {
@@ -34,7 +35,7 @@ async function loadLabelForWrite(projectId: number, labelId: number, userId: num
 export async function listProjectLabels(projectId: number, requesterId?: number) {
   const project = await findProjectById(projectId);
   if (!project) throw new HttpError(404, "Proyecto no encontrado.");
-  await assertProjectReadable(project, requesterId);
+  await assertProjectInsider(project, requesterId);
   return listProjectLabelsRepo(projectId);
 }
 
@@ -45,7 +46,7 @@ export async function createProjectLabel(
 ) {
   const project = await findProjectById(projectId);
   if (!project) throw new HttpError(404, "Proyecto no encontrado.");
-  await assertCanManageLabels(projectId, userId);
+  await assertCanManageLabels(project, userId);
 
   try {
     return await createProjectLabelRepo({ projectId, ...input });

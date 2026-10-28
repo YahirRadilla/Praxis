@@ -29,22 +29,44 @@ export function createProgressUpdate(data: CreateProgressUpdateData) {
 export function listProgressUpdatesByProject(projectId: number) {
   return prisma.progressUpdate.findMany({
     where: { projectId },
-    include: { evidence: true, author: { select: { id: true, name: true } }, activity: true },
+    include: {
+      evidence: true,
+      author: { select: { id: true, name: true } },
+      // WU-10: progress updates stay public, but the linked activity's
+      // title/description are board-insider-only (decision #10) — trim to
+      // just `{ id, title }` instead of leaking the full activity record.
+      activity: { select: { id: true, title: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export function listFeedUpdates() {
+export interface ListFeedFilters {
+  categoryId?: number;
+}
+
+export function listFeedUpdates(filters: ListFeedFilters = {}) {
   return prisma.progressUpdate.findMany({
     where: {
       postedToFeed: true,
-      project: { visibility: "PUBLIC", status: { notIn: ["DRAFT", "ARCHIVED"] } },
+      project: {
+        visibility: "PUBLIC",
+        archived: false,
+        ...(filters.categoryId ? { categories: { some: { categoryId: filters.categoryId } } } : {}),
+      },
     },
     include: {
       evidence: true,
       author: { select: { id: true, name: true } },
       activity: true,
-      project: { select: { id: true, name: true, sdgs: { include: { sdg: true } } } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          sdgs: { include: { sdg: true } },
+          categories: { include: { category: true } },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 50,

@@ -12,9 +12,14 @@ import SolicitudesRecibidas from "./pages/SolicitudesRecibidas";
 import Equipos from "./pages/Equipos";
 import Guardados from "./pages/Guardados";
 import Retos from "./pages/Retos";
+import MisTareas from "./pages/MisTareas";
 import RetoDetalle from "./pages/RetoDetalle";
 import CrearReto from "./pages/CrearReto";
+// import Impacto from "./pages/Impacto"; // desactivado por ahora
 import RequireAuth from "./components/RequireAuth";
+import RequireAccountType from "./components/RequireAccountType";
+import { CHALLENGE_CREATOR_TYPES } from "./utils/challengeCreators";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -79,17 +84,33 @@ function App() {
           }
         />
         <Route path="/explorar" element={<Explore />} />
+        {/* <Route path="/impacto" element={<Impacto />} /> desactivado por ahora */}
         <Route path="/retos" element={<Retos />} />
+        <Route
+          path="/mis-tareas"
+          element={
+            <RequireAuth>
+              <MisTareas />
+            </RequireAuth>
+          }
+        />
         <Route path="/retos/:id" element={<RetoDetalle />} />
         <Route
           path="/retos/nuevo"
           element={
             <RequireAuth>
-              <CrearReto />
+              <RequireAccountType
+                allowed={CHALLENGE_CREATOR_TYPES}
+                redirectTo="/retos"
+                message="Solo las organizaciones pueden publicar retos."
+              >
+                <CrearReto />
+              </RequireAccountType>
             </RequireAuth>
           }
         />
         <Route path="/proyectos/:id" element={<ProjectDetail />} />
+        <Route path="/proyectos/:id/actividades/:activityId" element={<ProjectDetail />} />
         <Route
           path="/proyectos/:id/editar"
           element={
@@ -98,6 +119,7 @@ function App() {
             </RequireAuth>
           }
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

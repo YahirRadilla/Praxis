@@ -1,5 +1,6 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import ProjectRow from "../components/ProjectRow";
 import { useChallenge } from "../hooks/useChallenges";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 
@@ -8,13 +9,39 @@ function RetoDetalle() {
   const challengeId = Number(id);
   const navigate = useNavigate();
 
-  const { data: challenge, isLoading } = useChallenge(challengeId);
+  const { data: challenge, isLoading, isError, refetch } = useChallenge(challengeId);
 
-  if (isLoading || !challenge) {
+  if (isLoading) {
     return (
       <div className="min-h-dvh flex flex-col">
         <Navbar />
         <p className="flex-1 flex items-center justify-center text-ink-soft">Cargando…</p>
+      </div>
+    );
+  }
+
+  if (isError || !challenge) {
+    return (
+      <div className="min-h-dvh flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
+          <p className="text-ink-soft">No se pudo cargar este reto. Es posible que no exista o que haya ocurrido un error.</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer border border-rule text-ink hover:bg-surface-ground"
+            >
+              Reintentar
+            </button>
+            <Link
+              to="/retos"
+              className={`rounded-full text-[13px] font-bold py-2.5 px-5 ${PRIMARY_BUTTON}`}
+            >
+              Volver a retos
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -68,6 +95,23 @@ function RetoDetalle() {
           >
             Crear proyecto a partir de este reto
           </button>
+
+          <div className={`bg-paper-raised border border-rule rounded-xl p-6 flex flex-col gap-4 ${CARD_SHADOW}`}>
+            <h2 className="font-heading text-[16px] font-bold text-ink m-0">
+              Proyectos vinculados a este reto
+            </h2>
+            {challenge.projects.length === 0 ? (
+              <p className="text-[13px] text-ink-soft m-0">
+                Todavía no hay proyectos vinculados a este reto.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {challenge.projects.map((project) => (
+                  <ProjectRow key={project.id} project={project} />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         <aside className="w-[260px] shrink-0 flex flex-col gap-5">

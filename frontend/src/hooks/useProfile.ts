@@ -6,7 +6,7 @@ export function useUpdateProfile() {
   const { token, setAuth } = useAuth();
 
   return useMutation({
-    mutationFn: (payload: { name?: string; skills?: string[]; interests?: string[] }) =>
+    mutationFn: (payload: { name?: string; skills?: string[]; interests?: string[]; academicProgram?: string }) =>
       updateProfileRequest(token!, payload),
     onSuccess: (updatedUser) => {
       setAuth({ user: updatedUser, token: token! });

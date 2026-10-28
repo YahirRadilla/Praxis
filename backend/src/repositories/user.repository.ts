@@ -24,6 +24,7 @@ export interface UpdateUserData {
   name?: string;
   skills?: string[];
   interests?: string[];
+  academicProgram?: string;
 }
 
 export function updateUser(id: number, data: UpdateUserData) {

@@ -3,13 +3,15 @@ import Navbar from "../components/Navbar";
 import ProfileSidebarCard from "../components/feed/ProfileSidebarCard";
 import SidebarNav from "../components/feed/SidebarNav";
 import SidebarSdgFilter from "../components/feed/SidebarSdgFilter";
+import SidebarCategoryFilter from "../components/feed/SidebarCategoryFilter";
 import CreateProjectCallout from "../components/feed/CreateProjectCallout";
 import FeedComposer from "../components/feed/FeedComposer";
 import FeedPostCard from "../components/feed/FeedPostCard";
 import { useFeed } from "../hooks/useFeed";
 
 function Inicio() {
-  const { data: feed, isLoading } = useFeed();
+  const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
+  const { data: feed, isLoading } = useFeed(categoryId);
   const [sdgId, setSdgId] = useState<number | undefined>(undefined);
 
   const visiblePosts = feed?.filter(
@@ -20,10 +22,11 @@ function Inicio() {
     <div className="min-h-dvh flex flex-col bg-surface-ground">
       <Navbar />
 
-      <div className="flex-1 flex gap-6 px-8 py-7 items-start max-w-[1200px] mx-auto w-full">
-        <aside className="w-[260px] shrink-0 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col md:flex-row gap-6 px-4 md:px-8 py-7 items-stretch md:items-start max-w-[1200px] mx-auto w-full">
+        <aside className="w-full md:w-[260px] md:shrink-0 flex flex-col gap-4">
           <ProfileSidebarCard />
           <SidebarNav />
+          <SidebarCategoryFilter value={categoryId} onChange={setCategoryId} />
           <SidebarSdgFilter value={sdgId} onChange={setSdgId} />
           <CreateProjectCallout />
         </aside>

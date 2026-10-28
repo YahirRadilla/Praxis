@@ -8,7 +8,7 @@ function SidebarSdgFilter({ value, onChange }: { value: number | undefined; onCh
 
   return (
     <div className={`flex flex-col gap-2.5 bg-paper-raised border border-rule rounded-xl p-4 ${CARD_SHADOW}`}>
-      <h3 className="text-[12px] font-semibold text-ink m-0">Filtrar por ODS</h3>
+      <h3 className="text-[12px] font-semibold text-ink m-0">Filtrar por ODS (opcional)</h3>
       <div className="flex flex-col gap-1.5">
         {preview.map((sdg) => (
           <button

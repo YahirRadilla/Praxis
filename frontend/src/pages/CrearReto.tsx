@@ -8,6 +8,7 @@ import { useCreateChallenge } from "../hooks/useChallenges";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
+import DatePicker from "../components/DatePicker";
 import { createChallengeFormSchema, type CreateChallengeFormValues } from "../schemas/challenge.schema";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 
@@ -66,7 +67,7 @@ function CrearReto() {
                 type="text"
                 {...register("title")}
                 className={`${FIELD_CLASS} ${
-                  errors.title ? "border-red-400 focus:outline-red-400" : "border-rule focus:outline-accent-primary"
+                  errors.title ? "border-danger focus:outline-danger" : "border-rule focus:outline-accent-primary"
                 }`}
               />
               <FieldError message={errors.title?.message} />
@@ -79,7 +80,7 @@ function CrearReto() {
                 {...register("description")}
                 className={`${FIELD_CLASS} resize-none ${
                   errors.description
-                    ? "border-red-400 focus:outline-red-400"
+                    ? "border-danger focus:outline-danger"
                     : "border-rule focus:outline-accent-primary"
                 }`}
               />
@@ -88,10 +89,15 @@ function CrearReto() {
 
             <label className="flex flex-col gap-1.5 max-w-[220px]">
               <span className="text-[12.5px] font-semibold text-ink">Fecha límite (opcional)</span>
-              <input
-                type="date"
-                {...register("deadline")}
-                className={`${FIELD_CLASS} border-rule focus:outline-accent-primary`}
+              <Controller
+                name="deadline"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    value={field.value ?? null}
+                    onChange={(value) => field.onChange(value ?? undefined)}
+                  />
+                )}
               />
             </label>
           </section>

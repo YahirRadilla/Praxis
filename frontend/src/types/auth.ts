@@ -10,6 +10,7 @@ export interface AuthUser {
   verified: boolean;
   verifiedAt: string | null;
   createdAt: string;
+  academicProgram: string | null;
 }
 
 export interface AuthResponse {

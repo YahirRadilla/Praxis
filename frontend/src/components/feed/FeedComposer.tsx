@@ -9,6 +9,10 @@ import { CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
 function FeedComposer() {
   const { user } = useAuth();
   const { data: myProjects } = useMyProjects();
+  // Only projects the viewer can actually post to (accepted member, not
+  // archived) — WU-09. An evaluator or a pending-invite project shouldn't
+  // show up here even though `useMyProjects` includes it.
+  const postableProjects = myProjects?.filter((p) => p.viewer?.canPost);
   const createFeedPost = useCreateFeedPost();
 
   const [open, setOpen] = useState(false);
@@ -60,7 +64,7 @@ function FeedComposer() {
             className="border border-rule rounded-lg bg-paper px-3 py-2.5 text-[12.5px] text-ink"
           >
             <option value="">Elige un proyecto…</option>
-            {myProjects?.map((p) => (
+            {postableProjects?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>

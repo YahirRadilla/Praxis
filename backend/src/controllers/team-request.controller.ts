@@ -27,6 +27,7 @@ export async function inviteToTeamHandler(req: Request, res: Response, next: Nex
       Number(req.params.projectId),
       req.user!.sub,
       input.userId,
+      input.purpose,
     );
     res.status(201).json(request);
   } catch (error) {
@@ -82,6 +83,28 @@ export async function listTeamHandler(req: Request, res: Response, next: NextFun
   try {
     const team = await teamRequestService.listTeam(Number(req.params.projectId), req.user?.sub);
     res.status(200).json(team);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function leaveTeamHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await teamRequestService.leaveTeam(Number(req.params.projectId), req.user!.sub);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeTeamMemberHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await teamRequestService.removeTeamMember(
+      Number(req.params.projectId),
+      req.user!.sub,
+      Number(req.params.userId),
+    );
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

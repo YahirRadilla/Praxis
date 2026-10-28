@@ -8,7 +8,12 @@ export async function uploadFileHandler(req: Request, res: Response, next: NextF
     }
 
     const url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-    res.status(201).json({ url, fileName: req.file.originalname });
+    res.status(201).json({
+      url,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      sizeBytes: req.file.size,
+    });
   } catch (error) {
     next(error);
   }

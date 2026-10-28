@@ -7,13 +7,14 @@ import { useChallenges } from "../hooks/useChallenges";
 import { useSdgs } from "../hooks/useSdgs";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 import { pluralize } from "../utils/text";
+import { CHALLENGE_CREATOR_TYPES } from "../utils/challengeCreators";
 
 function Retos() {
   const { user } = useAuth();
   const [sdgIds, setSdgIds] = useState<number[]>([]);
   const { data: sdgs } = useSdgs();
   const { data: challenges, isLoading } = useChallenges(sdgIds);
-  const canPublish = user?.accountType === "ORGANIZATION";
+  const canPublish = user ? CHALLENGE_CREATOR_TYPES.includes(user.accountType) : false;
 
   return (
     <div className="min-h-dvh flex flex-col bg-surface-ground">

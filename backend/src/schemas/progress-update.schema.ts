@@ -15,4 +15,13 @@ export const createProgressUpdateSchema = z.object({
     .optional(),
 });
 
+export const feedQuerySchema = z.object({
+  categoryId: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number(val) : undefined))
+    .refine((val) => val === undefined || Number.isInteger(val), "categoryId inválido"),
+});
+
 export type CreateProgressUpdateInput = z.infer<typeof createProgressUpdateSchema>;
+export type FeedQuery = z.infer<typeof feedQuerySchema>;

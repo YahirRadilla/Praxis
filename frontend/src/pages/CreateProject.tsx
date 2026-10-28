@@ -4,20 +4,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
-import StatusPill from "../components/StatusPill";
 import { useSdgs } from "../hooks/useSdgs";
+import { useCategories } from "../hooks/useCategories";
 import { useCreateProject } from "../hooks/useProjects";
 import { useChallenge } from "../hooks/useChallenges";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
+import CategoryPicker from "../components/CategoryPicker";
 import UserPicker from "../components/UserPicker";
 import type { ProjectPersonRef } from "../types/project";
 import { createProjectFormSchema, type CreateProjectFormValues } from "../schemas/project.schema";
-import { CARD_SHADOW, PRIMARY_BUTTON, PROJECT_STATUS } from "../utils/statusStyles";
+import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 
 const SECTIONS = [
   { id: "info", label: "Información del proyecto" },
+  { id: "categorias", label: "Categorías" },
   { id: "sdgs", label: "Objetivos de Desarrollo Sostenible" },
   { id: "reto", label: "Reto" },
   { id: "visibilidad", label: "Visibilidad" },
@@ -30,6 +32,7 @@ function CreateProject() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: sdgs, isLoading: loadingSdgs } = useSdgs();
+  const { data: categories, isLoading: loadingCategories } = useCategories();
   const createProject = useCreateProject();
   const [activeSection, setActiveSection] = useState("info");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -41,6 +44,7 @@ function CreateProject() {
     Number.isFinite(queryChallengeId) && queryChallengeId > 0 ? queryChallengeId : null,
   );
   const { data: linkedChallenge } = useChallenge(linkedChallengeId ?? NaN);
+  const sdgsPrefilledFromChallenge = useRef(false);
 
   const {
     register,
@@ -50,12 +54,24 @@ function CreateProject() {
     formState: { errors },
   } = useForm<CreateProjectFormValues>({
     resolver: zodResolver(createProjectFormSchema),
-    defaultValues: { sdgIds: [], visibility: "PUBLIC", challengeId: linkedChallengeId },
+    defaultValues: { sdgIds: [], categoryIds: [], visibility: "PRIVATE", challengeId: linkedChallengeId },
   });
 
   useEffect(() => {
     setValue("challengeId", linkedChallengeId);
   }, [linkedChallengeId, setValue]);
+
+  // Pre-fill the ODS multi-select with the linked Reto's own ODS as a sensible
+  // default, once, so the student doesn't have to re-pick goals the Reto
+  // already declared. They can still change/add/remove them afterward.
+  useEffect(() => {
+    if (!linkedChallenge || sdgsPrefilledFromChallenge.current) return;
+    sdgsPrefilledFromChallenge.current = true;
+    setValue(
+      "sdgIds",
+      linkedChallenge.sdgs.map(({ sdgId }) => sdgId),
+    );
+  }, [linkedChallenge, setValue]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -73,16 +89,21 @@ function CreateProject() {
   }, []);
 
   function onSubmit(values: CreateProjectFormValues) {
+    // Teacher/organization picks never travel as teacherId/organizationId
+    // (plan §2 decision #6): they become pending EVALUATOR invites the
+    // target accepts later, not immediate links (WU-08).
+    const evaluatorInviteIds = [teacher?.id, organization?.id].filter(
+      (value): value is number => typeof value === "number",
+    );
     createProject.mutate(
       {
         ...values,
-        teacherId: values.teacherId ?? undefined,
-        organizationId: values.organizationId ?? undefined,
+        evaluatorInviteIds: evaluatorInviteIds.length ? evaluatorInviteIds : undefined,
         challengeId: values.challengeId ?? undefined,
       },
       {
         onSuccess: (project) => {
-          toast.success("Proyecto creado como borrador");
+          toast.success("Proyecto creado");
           navigate(`/proyectos/${project.id}`, { replace: true });
         },
         onError: (error) => {
@@ -96,11 +117,10 @@ function CreateProject() {
     <div className="min-h-dvh flex flex-col bg-surface-ground">
       <Navbar />
 
-      <div className="flex-1 flex gap-8 px-8 py-8 max-w-[1100px] mx-auto w-full items-start">
-        <aside className="w-[220px] shrink-0 sticky top-8 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col md:flex-row gap-8 px-4 md:px-8 py-8 max-w-[1100px] mx-auto w-full items-stretch md:items-start">
+        <aside className="w-full md:w-[220px] md:shrink-0 md:sticky md:top-8 flex flex-col gap-4">
           <div className={`bg-paper-raised border border-rule rounded-xl p-4 flex flex-col gap-2 ${CARD_SHADOW}`}>
             <h2 className="font-heading text-[14px] font-bold text-ink m-0">Crear proyecto</h2>
-            <StatusPill status={PROJECT_STATUS.DRAFT} className="self-start" />
           </div>
 
           <nav className={`bg-paper-raised border border-rule rounded-xl p-2 flex flex-col ${CARD_SHADOW}`}>
@@ -136,7 +156,7 @@ function CreateProject() {
                 type="text"
                 {...register("name")}
                 className={`${FIELD_CLASS} ${
-                  errors.name ? "border-red-400 focus:outline-red-400" : "border-rule focus:outline-accent-primary"
+                  errors.name ? "border-danger focus:outline-danger" : "border-rule focus:outline-accent-primary"
                 }`}
               />
               <FieldError message={errors.name?.message} />
@@ -149,7 +169,7 @@ function CreateProject() {
                 {...register("description")}
                 className={`${FIELD_CLASS} resize-none ${
                   errors.description
-                    ? "border-red-400 focus:outline-red-400"
+                    ? "border-danger focus:outline-danger"
                     : "border-rule focus:outline-accent-primary"
                 }`}
               />
@@ -163,7 +183,7 @@ function CreateProject() {
                 {...register("problemStatement")}
                 className={`${FIELD_CLASS} resize-none ${
                   errors.problemStatement
-                    ? "border-red-400 focus:outline-red-400"
+                    ? "border-danger focus:outline-danger"
                     : "border-rule focus:outline-accent-primary"
                 }`}
               />
@@ -177,7 +197,7 @@ function CreateProject() {
                 {...register("objectives")}
                 className={`${FIELD_CLASS} resize-none ${
                   errors.objectives
-                    ? "border-red-400 focus:outline-red-400"
+                    ? "border-danger focus:outline-danger"
                     : "border-rule focus:outline-accent-primary"
                 }`}
               />
@@ -190,22 +210,50 @@ function CreateProject() {
                 label="Docente (opcional)"
                 placeholder="Buscar un docente"
                 value={teacher}
-                onChange={(user) => {
-                  setTeacher(user);
-                  setValue("teacherId", user?.id ?? null);
-                }}
+                onChange={setTeacher}
               />
               <UserPicker
                 accountType="ORGANIZATION"
                 label="Organización (opcional)"
                 placeholder="Buscar una organización"
                 value={organization}
-                onChange={(user) => {
-                  setOrganization(user);
-                  setValue("organizationId", user?.id ?? null);
-                }}
+                onChange={setOrganization}
               />
             </div>
+            {/* Scoped to the moment a pick is made, instead of a permanent
+                disclaimer under empty pickers. */}
+            {(teacher || organization) && (
+              <p className="text-[12px] text-ink-faint m-0">
+                Le enviaremos una invitación; quedará vinculado cuando acepte.
+              </p>
+            )}
+          </section>
+
+          <section
+            id="categorias"
+            ref={(el) => {
+              sectionRefs.current.categorias = el;
+            }}
+            className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
+          >
+            <div>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Categorías</h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Elige de 1 a 3 categorías que describan la disciplina de tu proyecto.
+              </p>
+            </div>
+            {loadingCategories ? (
+              <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>
+            ) : (
+              <Controller
+                name="categoryIds"
+                control={control}
+                render={({ field }) => (
+                  <CategoryPicker categories={categories ?? []} value={field.value} onChange={field.onChange} />
+                )}
+              />
+            )}
+            <FieldError message={errors.categoryIds?.message as string | undefined} />
           </section>
 
           <section
@@ -216,8 +264,12 @@ function CreateProject() {
             className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
           >
             <div>
-              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Objetivos de Desarrollo Sostenible</h2>
-              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">Elige los ODS que impacta tu proyecto.</p>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">
+                Objetivos de Desarrollo Sostenible (opcional)
+              </h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Si tu proyecto atiende algún ODS, selecciónalo aquí.
+              </p>
             </div>
             {loadingSdgs ? (
               <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>
@@ -293,9 +345,9 @@ function CreateProject() {
                       className="mt-1 accent-accent-primary"
                     />
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-[13px] font-semibold text-ink">Proyecto público</span>
+                      <span className="text-[13px] font-semibold text-ink">Público</span>
                       <span className="text-[12px] text-ink-faint">
-                        Visible para cualquier persona en Praxis, incluido en Explorar.
+                        Cualquier persona en Praxis puede verlo, incluido en Explorar.
                       </span>
                     </span>
                   </label>
@@ -311,9 +363,9 @@ function CreateProject() {
                       className="mt-1 accent-accent-primary"
                     />
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-[13px] font-semibold text-ink">Borrador privado</span>
+                      <span className="text-[13px] font-semibold text-ink">Privado</span>
                       <span className="text-[12px] text-ink-faint">
-                        Solo tú puedes verlo, hasta que decidas publicarlo.
+                        Solo tu equipo y tu evaluador lo ven. Puedes hacerlo público cuando quieras.
                       </span>
                     </span>
                   </label>

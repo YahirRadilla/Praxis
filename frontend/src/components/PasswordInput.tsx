@@ -53,7 +53,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type={visible ? "text" : "password"}
           className={`w-full border rounded-lg bg-paper px-3.5 py-3 pr-11 text-[13px] text-ink focus:outline-2 focus:outline-offset-1 ${
             hasError
-              ? "border-red-400 focus:outline-red-400"
+              ? "border-danger focus:outline-danger"
               : "border-rule focus:outline-accent-primary"
           } ${className ?? ""}`}
           {...rest}

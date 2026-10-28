@@ -3,12 +3,13 @@ import type { Project } from "../types/project";
 import StatusPill from "./StatusPill";
 import AvatarStack from "./AvatarStack";
 import { useTeam } from "../hooks/useTeam";
-import { CARD_SHADOW, PROJECT_STATUS } from "../utils/statusStyles";
+import { CARD_SHADOW, PROJECT_ARCHIVED, PROJECT_VISIBILITY } from "../utils/statusStyles";
+import { getChipTextColor } from "../utils/chipTextColor";
 
 function ProjectCard({ project }: { project: Project }) {
   const mainSdg = project.sdgs[0]?.sdg;
   const mainCategory = project.categories?.[0]?.category;
-  const bandColor = mainSdg?.colorHex ?? mainCategory?.colorHex;
+  const bandColor = mainCategory?.colorHex ?? mainSdg?.colorHex;
   const { data: team } = useTeam(project.id);
 
   return (
@@ -20,20 +21,20 @@ function ProjectCard({ project }: { project: Project }) {
         style={{ background: bandColor ? `linear-gradient(150deg, ${bandColor}, ${bandColor}99)` : "#19486A" }}
         className="relative h-[130px] flex items-start p-2.5"
       >
-        {mainSdg ? (
+        {mainCategory ? (
           <span
-            style={{ backgroundColor: mainSdg.colorHex }}
-            className="rounded-full px-2.5 py-1 text-[10px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+            style={{ backgroundColor: mainCategory.colorHex, color: getChipTextColor(mainCategory.colorHex) }}
+            className="rounded-full px-2.5 py-1 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
           >
-            ODS {String(mainSdg.id).padStart(2, "0")} · {mainSdg.name}
+            {mainCategory.name}
           </span>
         ) : (
-          mainCategory && (
+          mainSdg && (
             <span
-              style={{ backgroundColor: mainCategory.colorHex }}
-              className="rounded-full px-2.5 py-1 text-[10px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+              style={{ backgroundColor: mainSdg.colorHex, color: getChipTextColor(mainSdg.colorHex) }}
+              className="rounded-full px-2.5 py-1 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
             >
-              {mainCategory.name}
+              ODS {String(mainSdg.id).padStart(2, "0")} · {mainSdg.name}
             </span>
           )
         )}
@@ -45,7 +46,10 @@ function ProjectCard({ project }: { project: Project }) {
 
         <div className="flex items-center justify-between mt-1">
           <AvatarStack people={team ?? []} size="sm" max={3} />
-          <StatusPill status={PROJECT_STATUS[project.status] ?? PROJECT_STATUS.DRAFT} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <StatusPill status={PROJECT_VISIBILITY[project.visibility]} />
+            {project.archived && <StatusPill status={PROJECT_ARCHIVED} />}
+          </div>
         </div>
       </div>
     </Link>

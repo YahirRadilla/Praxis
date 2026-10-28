@@ -9,12 +9,33 @@
 
   --color-ink: #14161a;
   --color-ink-soft: #5a6069;
-  --color-ink-faint: #8b9199;
+  /* darkened from #8b9199 (~3.18:1 vs --color-paper-raised / ~2.87:1 vs
+     --color-surface-ground, both fail WCAG AA for the small 11-12.5px text
+     that relies on it, e.g. profile-menu email, Explore's result counter)
+     to ~5.15:1 / ~4.65:1. */
+  --color-ink-faint: #686e75;
   --color-fg-inverse: #ffffff;
   --color-fg-muted: #7a9a80;
 
   --color-accent-primary: #2d5e3a;
   --color-rule: #e4e2dd;
+
+  /* Danger/error token: used as TEXT/border/icon color against page
+     backgrounds (field errors, destructive icons). Not used as a solid
+     button fill — see --color-danger-bg for that. */
+  --color-danger: #a21942;
+  /* Solid danger BUTTON fill (e.g. ConfirmDialog's destructive confirm
+     button, white text on top). Contrast is self-contained (white text
+     directly on this red), independent of the page theme, so it keeps the
+     same value in both the light and dark blocks below. */
+  --color-danger-bg: #a21942;
+
+  /* Hover background for PRIMARY_BUTTON. Kept as the pre-existing dark
+     green so light mode is visually unchanged; dark mode pairs it with
+     --color-primary-hover-text instead of --color-paper (near-black),
+     which is what caused the near-invisible hover bug. */
+  --color-primary-hover: #234d30;
+  --color-primary-hover-text: #fbfaf8;
 
   --radius-lg: 8px;
   --radius-xl: 12px;
@@ -34,12 +55,28 @@
 
   --color-ink: #edeef0;
   --color-ink-soft: #a8adb5;
-  --color-ink-faint: #70757d;
+  /* lightened from #70757d (~3.49:1 vs --color-paper-raised, fails WCAG AA;
+     ~4.05:1 vs --color-surface-ground, also fails) to ~4.76:1 / ~5.53:1. */
+  --color-ink-faint: #868c93;
   --color-fg-inverse: #ffffff;
   --color-fg-muted: #9bc0a2;
 
   --color-accent-primary: #3fa058;
   --color-rule: #2c2f34;
+
+  /* Brighter than the light-mode value so it stays legible as TEXT against
+     dark backgrounds (paper-raised/surface-ground). NOT used as the solid
+     danger button fill in dark mode -- see --color-danger-bg, which stays
+     the same deep red in both themes because white-on-it is self-contained. */
+  --color-danger: #e8647f;
+  --color-danger-bg: #a21942;
+
+  /* Dark mode hover text switches from near-black (--color-paper is
+     near-black in dark mode) to near-white, since the hover background
+     stays the same deep green as light mode -- near-black text on a deep
+     green is the ~1.86:1 bug this token fixes. */
+  --color-primary-hover: #234d30;
+  --color-primary-hover-text: #edeef0;
 }
 
 body {

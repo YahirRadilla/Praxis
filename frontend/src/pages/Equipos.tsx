@@ -30,8 +30,8 @@ function Equipos() {
     <div className="min-h-dvh flex flex-col bg-surface-ground">
       <Navbar />
 
-      <div className="flex-1 flex gap-6 px-8 py-7 items-start max-w-[1200px] mx-auto w-full">
-        <aside className="w-[240px] shrink-0">
+      <div className="flex-1 flex flex-col md:flex-row gap-6 px-4 md:px-8 py-7 items-stretch md:items-start max-w-[1200px] mx-auto w-full">
+        <aside className="w-full md:w-[240px] md:shrink-0">
           <SidebarNav />
         </aside>
 

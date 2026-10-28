@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CARD_SHADOW } from "../utils/statusStyles";
 
 export function Lateral({ children }: { children: ReactNode }) {
-  return <aside className="w-[260px] shrink-0 flex flex-col gap-5">{children}</aside>;
+  return <aside className="w-full md:w-[260px] md:shrink-0 flex flex-col gap-5">{children}</aside>;
 }
 
 export function LateralCard({ title, children }: { title: string; children: ReactNode }) {

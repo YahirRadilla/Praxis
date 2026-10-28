@@ -54,7 +54,7 @@ function ConfirmDialog({
                 onClick={onConfirm}
                 className={
                   danger
-                    ? "rounded-full text-[12.5px] font-bold px-4 py-2 cursor-pointer text-white bg-[#A21942] hover:bg-[#8a1638]"
+                    ? "rounded-full text-[12.5px] font-bold px-4 py-2 cursor-pointer text-white bg-danger-bg hover:bg-[#8a1638]"
                     : `rounded-full text-[12.5px] font-bold px-4 py-2 cursor-pointer ${PRIMARY_BUTTON}`
                 }
               >

@@ -15,7 +15,11 @@ import Retos from "./pages/Retos";
 import MisTareas from "./pages/MisTareas";
 import RetoDetalle from "./pages/RetoDetalle";
 import CrearReto from "./pages/CrearReto";
+// import Impacto from "./pages/Impacto"; // desactivado por ahora
 import RequireAuth from "./components/RequireAuth";
+import RequireAccountType from "./components/RequireAccountType";
+import { CHALLENGE_CREATOR_TYPES } from "./utils/challengeCreators";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -80,6 +84,7 @@ function App() {
           }
         />
         <Route path="/explorar" element={<Explore />} />
+        {/* <Route path="/impacto" element={<Impacto />} /> desactivado por ahora */}
         <Route path="/retos" element={<Retos />} />
         <Route
           path="/mis-tareas"
@@ -94,7 +99,13 @@ function App() {
           path="/retos/nuevo"
           element={
             <RequireAuth>
-              <CrearReto />
+              <RequireAccountType
+                allowed={CHALLENGE_CREATOR_TYPES}
+                redirectTo="/retos"
+                message="Solo las organizaciones pueden publicar retos."
+              >
+                <CrearReto />
+              </RequireAccountType>
             </RequireAuth>
           }
         />
@@ -108,6 +119,7 @@ function App() {
             </RequireAuth>
           }
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

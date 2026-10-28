@@ -64,7 +64,19 @@ export function EvidenceItem({ ev }: { ev: Evidence }) {
   );
 }
 
-function ProgressUpdateCard({ update }: { update: ProgressUpdate }) {
+interface ProgressUpdateCardProps {
+  update: ProgressUpdate;
+  /**
+   * When true, renders this as a casual project-feed post rather than a
+   * formal progress entry: hides the "Validado" badge, which implies review
+   * that this context doesn't have. Used by the "Avances generales" card on
+   * ProjectDetail; the Inicio/main feed keeps the default (non-casual)
+   * rendering.
+   */
+  casual?: boolean;
+}
+
+function ProgressUpdateCard({ update, casual = false }: ProgressUpdateCardProps) {
   return (
     <div className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-[18px] ${CARD_SHADOW}`}>
       <div className="flex items-center gap-[11px]">
@@ -81,7 +93,7 @@ function ProgressUpdateCard({ update }: { update: ProgressUpdate }) {
             {formatDate(update.createdAt)}
           </span>
         </div>
-        {update.validated && (
+        {!casual && update.validated && (
           <span
             style={{ backgroundColor: "#E8F1F7", color: "#00689D" }}
             className="rounded-full px-[11px] py-1.5 text-[11px] font-semibold shrink-0"

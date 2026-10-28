@@ -75,7 +75,7 @@ function Register() {
             {...register("name")}
             className={`border rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-offset-1 ${
               errors.name
-                ? "border-red-400 focus:outline-red-400"
+                ? "border-danger focus:outline-danger"
                 : "border-rule focus:outline-accent-primary"
             }`}
           />
@@ -90,7 +90,7 @@ function Register() {
             {...register("email")}
             className={`border rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-offset-1 ${
               errors.email
-                ? "border-red-400 focus:outline-red-400"
+                ? "border-danger focus:outline-danger"
                 : "border-rule focus:outline-accent-primary"
             }`}
           />

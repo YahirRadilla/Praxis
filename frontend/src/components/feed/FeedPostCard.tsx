@@ -1,10 +1,14 @@
 import { Link } from "react-router-dom";
 import type { FeedUpdate } from "../../types/activity";
+import { CATEGORY_ICON_MAP } from "../../utils/categoryIcons";
 import { CARD_SHADOW } from "../../utils/statusStyles";
 import { timeAgo } from "../../utils/text";
+import { getChipTextColor } from "../../utils/chipTextColor";
 
 function FeedPostCard({ update }: { update: FeedUpdate }) {
+  const mainCategory = update.project.categories[0]?.category;
   const mainSdg = update.project.sdgs[0]?.sdg;
+  const CategoryIcon = mainCategory ? CATEGORY_ICON_MAP[mainCategory.icon] : undefined;
 
   return (
     <article className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-4 ${CARD_SHADOW}`}>
@@ -21,13 +25,26 @@ function FeedPostCard({ update }: { update: FeedUpdate }) {
             · {timeAgo(update.createdAt)}
           </p>
         </div>
-        {mainSdg && (
-          <span
-            style={{ backgroundColor: mainSdg.colorHex }}
-            className="text-[10px] font-bold text-white rounded px-2 py-1 shrink-0"
-          >
-            ODS {mainSdg.id}
-          </span>
+        {(mainCategory || mainSdg) && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {mainCategory && (
+              <span
+                style={{ backgroundColor: mainCategory.colorHex, color: getChipTextColor(mainCategory.colorHex) }}
+                className="flex items-center gap-1 text-[10px] font-bold rounded px-2 py-1"
+              >
+                {CategoryIcon && <CategoryIcon size={12} weight="bold" />}
+                {mainCategory.name}
+              </span>
+            )}
+            {mainSdg && (
+              <span
+                style={{ backgroundColor: mainSdg.colorHex, color: getChipTextColor(mainSdg.colorHex) }}
+                className="text-[10px] font-bold rounded px-2 py-1"
+              >
+                ODS {mainSdg.id}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

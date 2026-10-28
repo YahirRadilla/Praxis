@@ -3,9 +3,10 @@ import { createProgressUpdateRequest, listProgressUpdatesRequest, uploadFileRequ
 import { useAuth } from "../context/AuthContext";
 
 export function useProgressUpdates(projectId: number) {
+  const { token, user } = useAuth();
   return useQuery({
-    queryKey: ["progress-updates", projectId],
-    queryFn: () => listProgressUpdatesRequest(projectId),
+    queryKey: ["progress-updates", projectId, user?.id ?? "anon"],
+    queryFn: () => listProgressUpdatesRequest(projectId, token),
     enabled: Number.isFinite(projectId),
   });
 }

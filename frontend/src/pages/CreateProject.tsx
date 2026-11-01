@@ -8,6 +8,7 @@ import { useSdgs } from "../hooks/useSdgs";
 import { useCategories } from "../hooks/useCategories";
 import { useCreateProject } from "../hooks/useProjects";
 import { useChallenge } from "../hooks/useChallenges";
+import { useClassGroup } from "../hooks/useClassGroups";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
@@ -22,6 +23,7 @@ const SECTIONS = [
   { id: "categorias", label: "Categorías" },
   { id: "sdgs", label: "Objetivos de Desarrollo Sostenible" },
   { id: "reto", label: "Reto" },
+  { id: "grupo-clase", label: "Grupo de clase" },
   { id: "visibilidad", label: "Visibilidad" },
 ];
 
@@ -46,6 +48,12 @@ function CreateProject() {
   const { data: linkedChallenge } = useChallenge(linkedChallengeId ?? NaN);
   const sdgsPrefilledFromChallenge = useRef(false);
 
+  const queryClassGroupId = Number(searchParams.get("classGroupId"));
+  const [linkedClassGroupId, setLinkedClassGroupId] = useState<number | null>(
+    Number.isFinite(queryClassGroupId) && queryClassGroupId > 0 ? queryClassGroupId : null,
+  );
+  const { data: linkedClassGroup } = useClassGroup(linkedClassGroupId ?? NaN);
+
   const {
     register,
     handleSubmit,
@@ -54,12 +62,22 @@ function CreateProject() {
     formState: { errors },
   } = useForm<CreateProjectFormValues>({
     resolver: zodResolver(createProjectFormSchema),
-    defaultValues: { sdgIds: [], categoryIds: [], visibility: "PRIVATE", challengeId: linkedChallengeId },
+    defaultValues: {
+      sdgIds: [],
+      categoryIds: [],
+      visibility: "PRIVATE",
+      challengeId: linkedChallengeId,
+      classGroupId: linkedClassGroupId,
+    },
   });
 
   useEffect(() => {
     setValue("challengeId", linkedChallengeId);
   }, [linkedChallengeId, setValue]);
+
+  useEffect(() => {
+    setValue("classGroupId", linkedClassGroupId);
+  }, [linkedClassGroupId, setValue]);
 
   // Pre-fill the ODS multi-select with the linked Reto's own ODS as a sensible
   // default, once, so the student doesn't have to re-pick goals the Reto
@@ -73,19 +91,36 @@ function CreateProject() {
     );
   }, [linkedChallenge, setValue]);
 
+  // An IntersectionObserver with a narrow trigger band near the top of the
+  // viewport can't highlight short trailing sections ("Grupo de clase",
+  // "Visibilidad"): once scrolled near the document's bottom, there's no
+  // more room below them to push them up into that band, so the nav never
+  // updates and clicking those tabs looks broken. The scroll-position
+  // heuristic below still shares that limitation when several short
+  // sections land fully on screen at once, so an explicit tab click (see
+  // the nav `onClick` below) sets the section directly; `suppressScrollRef`
+  // stops the scroll handler fired by that same click's jump from
+  // immediately re-deriving (and overriding) a different section.
+  const suppressScrollRef = useRef(false);
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.find((entry) => entry.isIntersecting);
-        if (visible) setActiveSection(visible.target.id);
-      },
-      { rootMargin: "-20% 0px -70% 0px" },
-    );
-    SECTIONS.forEach(({ id }) => {
-      const el = sectionRefs.current[id];
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+    function updateActiveSection() {
+      if (suppressScrollRef.current) return;
+      const threshold = window.innerHeight * 0.3;
+      let current = SECTIONS[0].id;
+      for (const { id } of SECTIONS) {
+        const el = sectionRefs.current[id];
+        if (el && el.getBoundingClientRect().top <= threshold) current = id;
+      }
+      setActiveSection(current);
+    }
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
   }, []);
 
   function onSubmit(values: CreateProjectFormValues) {
@@ -100,6 +135,7 @@ function CreateProject() {
         ...values,
         evaluatorInviteIds: evaluatorInviteIds.length ? evaluatorInviteIds : undefined,
         challengeId: values.challengeId ?? undefined,
+        classGroupId: values.classGroupId ?? undefined,
       },
       {
         onSuccess: (project) => {
@@ -128,6 +164,13 @@ function CreateProject() {
               <a
                 key={section.id}
                 href={`#${section.id}`}
+                onClick={() => {
+                  setActiveSection(section.id);
+                  suppressScrollRef.current = true;
+                  window.setTimeout(() => {
+                    suppressScrollRef.current = false;
+                  }, 600);
+                }}
                 className={`rounded-lg px-3 py-2.5 text-[12.5px] border-l-[3px] ${
                   activeSection === section.id
                     ? "bg-surface-ground font-semibold text-accent-primary border-accent-primary"
@@ -205,13 +248,24 @@ function CreateProject() {
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <UserPicker
-                accountType="TEACHER"
-                label="Docente (opcional)"
-                placeholder="Buscar un docente"
-                value={teacher}
-                onChange={setTeacher}
-              />
+              {linkedClassGroupId ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[12.5px] font-semibold text-ink">Docente</span>
+                  <p className="text-[12.5px] text-ink-faint m-0 rounded-lg border border-rule bg-surface-ground px-3.5 py-3">
+                    {linkedClassGroup
+                      ? `${linkedClassGroup.teacher.name} quedará vinculado como evaluador, sin invitación, por ser el docente de este grupo de clase.`
+                      : "El docente del grupo de clase quedará vinculado como evaluador automáticamente."}
+                  </p>
+                </div>
+              ) : (
+                <UserPicker
+                  accountType="TEACHER"
+                  label="Docente (opcional)"
+                  placeholder="Buscar un docente"
+                  value={teacher}
+                  onChange={setTeacher}
+                />
+              )}
               <UserPicker
                 accountType="ORGANIZATION"
                 label="Organización (opcional)"
@@ -315,6 +369,40 @@ function CreateProject() {
             ) : (
               <Link to="/retos" className="self-start text-[12.5px] font-semibold text-accent-primary">
                 Elegir un reto existente →
+              </Link>
+            )}
+          </section>
+
+          <section
+            id="grupo-clase"
+            ref={(el) => {
+              sectionRefs.current["grupo-clase"] = el;
+            }}
+            className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 scroll-mt-8 ${CARD_SHADOW}`}
+          >
+            <div>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Grupo de clase (opcional)</h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Si este proyecto es para un grupo de clase, puedes vincularlo aquí.
+              </p>
+            </div>
+
+            {linkedClassGroupId ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-surface-ground px-3.5 py-3">
+                <span className="text-[13px] text-ink">
+                  {linkedClassGroup ? linkedClassGroup.name : "Cargando grupo de clase…"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLinkedClassGroupId(null)}
+                  className="text-[12px] font-semibold text-accent-primary cursor-pointer shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <Link to="/grupos-clase" className="self-start text-[12.5px] font-semibold text-accent-primary">
+                Elegir un grupo de clase existente →
               </Link>
             )}
           </section>

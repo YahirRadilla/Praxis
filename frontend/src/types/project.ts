@@ -72,6 +72,7 @@ export interface Project {
   sdgs: { projectId: number; sdgId: number; sdg: Sdg }[];
   categories: { projectId: number; categoryId: number; category: Category }[];
   challenge: { id: number; title: string } | null;
+  classGroup: { id: number; name: string } | null;
   viewer?: ProjectViewer;
   pendingEvaluatorInvites?: PendingEvaluatorInvites;
 }
@@ -91,6 +92,7 @@ export interface CreateProjectPayload {
   evaluatorInviteIds?: number[];
   visibility?: ProjectVisibility;
   challengeId?: number;
+  classGroupId?: number;
 }
 
 export interface SearchProjectsParams {

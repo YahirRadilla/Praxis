@@ -12,6 +12,7 @@ export const createProjectFormSchema = z.object({
     .max(3, "Máximo 3 categorías"),
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
   challengeId: z.number().int().nullable().optional(),
+  classGroupId: z.number().int().nullable().optional(),
 });
 
 export type CreateProjectFormValues = z.infer<typeof createProjectFormSchema>;

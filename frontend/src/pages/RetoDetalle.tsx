@@ -116,9 +116,13 @@ function RetoDetalle() {
 
         <aside className="w-[260px] shrink-0 flex flex-col gap-5">
           <div className={`bg-paper-raised border border-rule rounded-xl p-4 flex flex-col gap-3 ${CARD_SHADOW}`}>
-            <h3 className="text-[12.5px] font-semibold text-ink m-0">Organización</h3>
+            <h3 className="text-[12.5px] font-semibold text-ink m-0">
+              {challenge.organization.accountType === "ORGANIZATION" ? "Organización" : "Publicado por"}
+            </h3>
             <p className="text-[13px] font-semibold text-ink m-0">{challenge.organization.name}</p>
-            <p className="text-[11.5px] text-ink-faint m-0 truncate">{challenge.organization.email}</p>
+            {challenge.organization.email && (
+              <p className="text-[11.5px] text-ink-faint m-0 truncate">{challenge.organization.email}</p>
+            )}
           </div>
 
           <div className={`bg-paper-raised border border-rule rounded-xl p-4 flex flex-col gap-3 ${CARD_SHADOW}`}>

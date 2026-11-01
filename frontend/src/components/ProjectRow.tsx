@@ -4,8 +4,15 @@ import StatusPill from "./StatusPill";
 import { CARD_SHADOW, PROJECT_ARCHIVED, PROJECT_VISIBILITY } from "../utils/statusStyles";
 import { getChipTextColor } from "../utils/chipTextColor";
 
-function ProjectRow({ project }: { project: Project }) {
-  const mainSdg = project.sdgs[0]?.sdg;
+// Some callers (e.g. GrupoClaseDetalle's "Proyectos de este grupo") only have
+// the minimal `{ id, name, visibility, archived }` shape — not a full
+// `Project` with owner/sdgs/categories/description. Every field beyond those
+// four is optional here so the row degrades gracefully instead of throwing.
+type ProjectRowData = Pick<Project, "id" | "name" | "visibility" | "archived"> &
+  Partial<Pick<Project, "description" | "owner" | "sdgs" | "categories">>;
+
+function ProjectRow({ project }: { project: ProjectRowData }) {
+  const mainSdg = project.sdgs?.[0]?.sdg;
   const mainCategory = project.categories?.[0]?.category;
   const bandColor = mainCategory?.colorHex ?? mainSdg?.colorHex;
 
@@ -39,9 +46,11 @@ function ProjectRow({ project }: { project: Project }) {
       <div className="flex-1 min-w-0 flex flex-col gap-2 py-5 px-5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-semibold font-data text-ink-faint truncate">
-            {project.categories.length > 0
+            {project.categories && project.categories.length > 0
               ? project.categories.map(({ category }) => category.name).join(", ")
-              : `ODS ${project.sdgs.map(({ sdg }) => sdg.id).join(", ")}`}
+              : project.sdgs && project.sdgs.length > 0
+                ? `ODS ${project.sdgs.map(({ sdg }) => sdg.id).join(", ")}`
+                : null}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <StatusPill status={PROJECT_VISIBILITY[project.visibility]} />
@@ -49,10 +58,14 @@ function ProjectRow({ project }: { project: Project }) {
           </div>
         </div>
         <h3 className="font-heading text-[17px] font-semibold text-ink m-0 leading-snug">{project.name}</h3>
-        <p className="text-[13px] text-ink-soft m-0 line-clamp-2">{project.description}</p>
-        <div className="flex items-center gap-4 mt-0.5">
-          <span className="text-[12.5px] text-ink-soft">{project.owner.name}</span>
-        </div>
+        {project.description && (
+          <p className="text-[13px] text-ink-soft m-0 line-clamp-2">{project.description}</p>
+        )}
+        {project.owner && (
+          <div className="flex items-center gap-4 mt-0.5">
+            <span className="text-[12.5px] text-ink-soft">{project.owner.name}</span>
+          </div>
+        )}
       </div>
     </Link>
   );

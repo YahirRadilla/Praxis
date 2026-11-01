@@ -5,12 +5,12 @@ import {
   listChallengesRequest,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import type { CreateChallengePayload } from "../types/challenge";
+import type { CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 
-export function useChallenges(sdgIds?: number[]) {
+export function useChallenges(params: ListChallengesParams = {}) {
   return useQuery({
-    queryKey: ["challenges", sdgIds],
-    queryFn: () => listChallengesRequest({ sdgIds }),
+    queryKey: ["challenges", params],
+    queryFn: () => listChallengesRequest(params),
   });
 }
 

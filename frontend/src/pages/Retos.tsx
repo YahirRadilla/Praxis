@@ -1,20 +1,31 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import SdgMultiSelect from "../components/SdgMultiSelect";
+import CategoryMultiSelect from "../components/CategoryMultiSelect";
 import { useAuth } from "../context/AuthContext";
 import { useChallenges } from "../hooks/useChallenges";
 import { useSdgs } from "../hooks/useSdgs";
+import { useCategories } from "../hooks/useCategories";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 import { pluralize } from "../utils/text";
 import { CHALLENGE_CREATOR_TYPES } from "../utils/challengeCreators";
 
 function Retos() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [sdgIds, setSdgIds] = useState<number[]>([]);
+  const { data: categories } = useCategories();
   const { data: sdgs } = useSdgs();
-  const { data: challenges, isLoading } = useChallenges(sdgIds);
+  const { data: challenges, isLoading } = useChallenges({ q: q || undefined, categoryIds, sdgIds });
   const canPublish = user ? CHALLENGE_CREATOR_TYPES.includes(user.accountType) : false;
+
+  function handleSearch(value: string) {
+    setQ(value);
+    setSearchParams(value ? { q: value } : {});
+  }
 
   return (
     <div className="min-h-dvh flex flex-col bg-surface-ground">
@@ -25,7 +36,7 @@ function Retos() {
           <div className="flex flex-col gap-1">
             <h1 className="font-heading text-[26px] font-bold text-ink m-0">Retos</h1>
             <p className="text-[13px] text-ink-soft m-0">
-              Problemáticas publicadas por organizaciones para que tu equipo las resuelva.
+              Problemáticas publicadas por organizaciones y docentes para que tu equipo las resuelva.
             </p>
           </div>
           {canPublish && (
@@ -39,6 +50,14 @@ function Retos() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Buscar retos por título o descripción"
+            className="flex-1 min-w-[240px] max-w-[500px] border border-rule rounded-full bg-paper px-5 py-3 text-[13.5px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+          />
+          <CategoryMultiSelect categories={categories ?? []} value={categoryIds} onChange={setCategoryIds} />
           <SdgMultiSelect sdgs={sdgs ?? []} value={sdgIds} onChange={setSdgIds} />
         </div>
       </header>
@@ -51,7 +70,7 @@ function Retos() {
         </p>
 
         {!isLoading && challenges?.length === 0 && (
-          <p className="text-[13px] text-ink-soft">No hay retos publicados todavía.</p>
+          <p className="text-[13px] text-ink-soft">No se encontraron retos con estos filtros.</p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

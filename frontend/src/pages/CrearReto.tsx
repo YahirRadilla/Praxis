@@ -4,10 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import { useSdgs } from "../hooks/useSdgs";
+import { useCategories } from "../hooks/useCategories";
 import { useCreateChallenge } from "../hooks/useChallenges";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
 import SdgPicker from "../components/SdgPicker";
+import CategoryMultiSelect from "../components/CategoryMultiSelect";
 import DatePicker from "../components/DatePicker";
 import { createChallengeFormSchema, type CreateChallengeFormValues } from "../schemas/challenge.schema";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
@@ -18,6 +20,7 @@ const FIELD_CLASS =
 function CrearReto() {
   const navigate = useNavigate();
   const { data: sdgs, isLoading: loadingSdgs } = useSdgs();
+  const { data: categories, isLoading: loadingCategories } = useCategories();
   const createChallenge = useCreateChallenge();
 
   const {
@@ -27,7 +30,7 @@ function CrearReto() {
     formState: { errors },
   } = useForm<CreateChallengeFormValues>({
     resolver: zodResolver(createChallengeFormSchema),
-    defaultValues: { sdgIds: [] },
+    defaultValues: { sdgIds: [], categoryIds: [] },
   });
 
   function onSubmit(values: CreateChallengeFormValues) {
@@ -104,8 +107,10 @@ function CrearReto() {
 
           <section className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-6 ${CARD_SHADOW}`}>
             <div>
-              <h2 className="font-heading text-[16px] font-bold text-ink m-0">Objetivos de Desarrollo Sostenible</h2>
-              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">Elige los ODS que atiende este reto.</p>
+              <h2 className="font-heading text-[16px] font-bold text-ink m-0">ODS y categorías</h2>
+              <p className="text-[12.5px] text-ink-faint mt-1 mb-0">
+                Elige al menos un ODS o una categoría que atienda este reto.
+              </p>
             </div>
             {loadingSdgs ? (
               <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>
@@ -114,10 +119,30 @@ function CrearReto() {
                 name="sdgIds"
                 control={control}
                 render={({ field }) => (
-                  <SdgPicker sdgs={sdgs ?? []} value={field.value} onChange={field.onChange} />
+                  <SdgPicker sdgs={sdgs ?? []} value={field.value ?? []} onChange={field.onChange} />
                 )}
               />
             )}
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] font-semibold text-ink">Categorías (opcional)</span>
+              {loadingCategories ? (
+                <p className="text-[12.5px] text-ink-soft">Cargando catálogo…</p>
+              ) : (
+                <Controller
+                  name="categoryIds"
+                  control={control}
+                  render={({ field }) => (
+                    <CategoryMultiSelect
+                      categories={categories ?? []}
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              )}
+            </div>
+
             <FieldError message={errors.sdgIds?.message as string | undefined} />
 
             <button

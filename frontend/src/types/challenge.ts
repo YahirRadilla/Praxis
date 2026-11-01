@@ -1,4 +1,4 @@
-import type { Project, ProjectPersonRef, Sdg } from "./project";
+import type { Category, Project, ProjectPersonRef, Sdg } from "./project";
 
 export interface Challenge {
   id: number;
@@ -7,11 +7,13 @@ export interface Challenge {
   deadline: string | null;
   createdAt: string;
   organizationId: number;
-  // Explicit exception to WU-13 (plan decision #11): a Reto's organization
-  // email stays public contact info, so it's always present here, unlike
-  // the general `ProjectPersonRef.email`.
-  organization: ProjectPersonRef & { email: string };
+  // Explicit exception to WU-13 (plan decision #11): an ORGANIZATION
+  // publisher's email stays public contact info. A TEACHER publisher's
+  // personal email is hidden the same way as everywhere else, so this is
+  // `null` whenever `organization.accountType !== "ORGANIZATION"`.
+  organization: ProjectPersonRef & { email: string | null };
   sdgs: { challengeId: number; sdgId: number; sdg: Sdg }[];
+  categories: { challengeId: number; categoryId: number; category: Category }[];
   projects: Project[];
 }
 
@@ -19,9 +21,12 @@ export interface CreateChallengePayload {
   title: string;
   description: string;
   deadline?: string;
-  sdgIds: number[];
+  sdgIds?: number[];
+  categoryIds?: number[];
 }
 
 export interface ListChallengesParams {
+  q?: string;
   sdgIds?: number[];
+  categoryIds?: number[];
 }

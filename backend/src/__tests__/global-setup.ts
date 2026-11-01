@@ -29,6 +29,7 @@ export default async function globalSetup() {
         "checklist_items", "checklist_sections", "activity_events", "activity_assignees",
         "evidence", "progress_updates", "dictamenes", "saved_projects", "activities",
         "team_requests", "project_categories", "project_sdgs", "challenge_sdgs",
+        "challenge_categories", "class_group_members", "class_group_resources", "class_groups",
         "projects", "challenges", "categories", "sdgs", "users"
       RESTART IDENTITY CASCADE
     `);

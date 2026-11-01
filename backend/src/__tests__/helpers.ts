@@ -10,11 +10,16 @@ let sdgIdCache: number | null = null;
  * (it mirrors the UN's 1-17 numbering), and the test database starts empty
  * (see global-setup.ts), so anything needing a valid `sdgId` (e.g.
  * `POST /challenges`) must create one first, the same way `ensureCategory`
- * does for `Category`. */
+ * does for `Category`. Uses `upsert`, not `create`: Vitest gives each test
+ * file its own module instance (so `sdgIdCache` never survives across
+ * files even with `fileParallelism: false`), and more than one test file
+ * calling this for the same run would otherwise collide on `id: 1`. */
 export async function ensureSdg(): Promise<number> {
   if (sdgIdCache !== null) return sdgIdCache;
-  const sdg = await prisma.sdg.create({
-    data: { id: 1, name: "ODS de prueba", colorHex: "#654321" },
+  const sdg = await prisma.sdg.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, name: "ODS de prueba", colorHex: "#654321" },
   });
   sdgIdCache = sdg.id;
   return sdg.id;
@@ -134,6 +139,31 @@ export async function createProjectWithAcceptedEvaluator(
   }
 
   return created.body;
+}
+
+export async function createClassGroupFor(
+  token: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ status: number; body: any }> {
+  const res = await request(app)
+    .post("/api/class-groups")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      name: `Grupo de clase ${Date.now()}-${Math.floor(Math.random() * 100_000)}`,
+      description: "Descripción de prueba",
+      ...overrides,
+    });
+  return { status: res.status, body: res.body };
+}
+
+export async function joinClassGroupFor(
+  token: string,
+  classGroupId: number,
+): Promise<{ status: number; body: any }> {
+  const res = await request(app)
+    .post(`/api/class-groups/${classGroupId}/members`)
+    .set("Authorization", `Bearer ${token}`);
+  return { status: res.status, body: res.body };
 }
 
 export { app, request, prisma };

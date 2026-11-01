@@ -1,12 +1,16 @@
 import { NavLink } from "react-router-dom";
 import { CARD_SHADOW } from "../../utils/statusStyles";
 
+// "Grupos de clase" used to be appended only for TEACHER accounts ("Mis
+// grupos de clase"); it's now a plain entry since every account type can
+// search/join/own groups from that one page.
 const ITEMS = [
   { to: "/inicio", label: "Inicio" },
   { to: "/mis-proyectos", label: "Mis proyectos" },
   { to: "/solicitudes-recibidas", label: "Solicitudes recibidas" },
   { to: "/equipos", label: "Equipos" },
   { to: "/guardados", label: "Guardados" },
+  { to: "/grupos-clase", label: "Grupos de clase" },
 ];
 
 function SidebarNav() {

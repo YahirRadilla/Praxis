@@ -28,6 +28,14 @@ import type { Challenge, CreateChallengePayload, ListChallengesParams } from "..
 import type { Dictamen, DictamenVerdict } from "../types/dictamen";
 import type { Notification } from "../types/notification";
 import type { ImpactStats } from "../types/impact";
+import type {
+  ClassGroup,
+  ClassGroupMemberRow,
+  ClassGroupResource,
+  CreateClassGroupPayload,
+  CreateClassGroupResourcePayload,
+  UpdateClassGroupPayload,
+} from "../types/class-group";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -555,12 +563,94 @@ export function createChallengeRequest(token: string, payload: CreateChallengePa
 
 export function listChallengesRequest(params: ListChallengesParams = {}) {
   return request<Challenge[]>("/api/challenges", {
-    query: { sdgIds: params.sdgIds?.length ? params.sdgIds.join(",") : undefined },
+    query: {
+      q: params.q,
+      sdgIds: params.sdgIds?.length ? params.sdgIds.join(",") : undefined,
+      categoryIds: params.categoryIds?.length ? params.categoryIds.join(",") : undefined,
+    },
   });
 }
 
 export function getChallengeRequest(id: number) {
   return request<Challenge>(`/api/challenges/${id}`);
+}
+
+// --- Class groups (Grupos de clase) --------------------------------------------
+
+export function createClassGroupRequest(token: string, payload: CreateClassGroupPayload) {
+  return request<ClassGroup>("/api/class-groups", { method: "POST", token, body: payload });
+}
+
+export function updateClassGroupRequest(token: string, id: number, payload: UpdateClassGroupPayload) {
+  return request<ClassGroup>(`/api/class-groups/${id}`, { method: "PATCH", token, body: payload });
+}
+
+export function getClassGroupRequest(id: number, token?: string | null) {
+  return request<ClassGroup>(`/api/class-groups/${id}`, { token });
+}
+
+export function listMyClassGroupsRequest(token: string) {
+  return request<ClassGroup[]>("/api/class-groups/mine", { token });
+}
+
+// Public search (preview tier, viewer-independent) — mirrors
+// `searchProjectsRequest`/`listChallengesRequest`. The backend route takes
+// no auth middleware at all, so `token` is accepted only for call-site
+// consistency with the other tiered-read requests; it's never read.
+export function searchClassGroupsRequest(q?: string, token?: string | null) {
+  return request<ClassGroup[]>("/api/class-groups", { token, query: { q } });
+}
+
+export function listJoinedClassGroupsRequest(token: string) {
+  return request<ClassGroup[]>("/api/class-groups/joined", { token });
+}
+
+export function joinClassGroupRequest(id: number, token: string) {
+  return request<{ classGroupId: number; userId: number; joinedAt: string }>(
+    `/api/class-groups/${id}/members`,
+    { method: "POST", token },
+  );
+}
+
+export function leaveClassGroupRequest(id: number, token: string) {
+  return request<{ success: boolean }>(`/api/class-groups/${id}/members/me`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function listClassGroupMembersRequest(id: number, token: string) {
+  return request<ClassGroupMemberRow[]>(`/api/class-groups/${id}/members`, { token });
+}
+
+export function removeClassGroupMemberRequest(id: number, userId: number, token: string) {
+  return request<{ success: boolean }>(`/api/class-groups/${id}/members/${userId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function addClassGroupResourceRequest(
+  token: string,
+  classGroupId: number,
+  payload: CreateClassGroupResourcePayload,
+) {
+  return request<ClassGroupResource>(`/api/class-groups/${classGroupId}/resources`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function deleteClassGroupResourceRequest(
+  token: string,
+  classGroupId: number,
+  resourceId: number,
+) {
+  return request<void>(`/api/class-groups/${classGroupId}/resources/${resourceId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export function createDictamenRequest(

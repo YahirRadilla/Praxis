@@ -15,6 +15,9 @@ import Retos from "./pages/Retos";
 import MisTareas from "./pages/MisTareas";
 import RetoDetalle from "./pages/RetoDetalle";
 import CrearReto from "./pages/CrearReto";
+import MisGruposClase from "./pages/MisGruposClase";
+import CrearGrupoClase from "./pages/CrearGrupoClase";
+import GrupoClaseDetalle from "./pages/GrupoClaseDetalle";
 // import Impacto from "./pages/Impacto"; // desactivado por ahora
 import RequireAuth from "./components/RequireAuth";
 import RequireAccountType from "./components/RequireAccountType";
@@ -102,13 +105,29 @@ function App() {
               <RequireAccountType
                 allowed={CHALLENGE_CREATOR_TYPES}
                 redirectTo="/retos"
-                message="Solo las organizaciones pueden publicar retos."
+                message="Solo las organizaciones y los docentes pueden publicar retos."
               >
                 <CrearReto />
               </RequireAccountType>
             </RequireAuth>
           }
         />
+        <Route path="/grupos-clase" element={<MisGruposClase />} />
+        <Route
+          path="/grupos-clase/nuevo"
+          element={
+            <RequireAuth>
+              <RequireAccountType
+                allowed={["TEACHER"]}
+                redirectTo="/grupos-clase"
+                message="Solo los docentes pueden crear grupos de clase."
+              >
+                <CrearGrupoClase />
+              </RequireAccountType>
+            </RequireAuth>
+          }
+        />
+        <Route path="/grupos-clase/:id" element={<GrupoClaseDetalle />} />
         <Route path="/proyectos/:id" element={<ProjectDetail />} />
         <Route path="/proyectos/:id/actividades/:activityId" element={<ProjectDetail />} />
         <Route

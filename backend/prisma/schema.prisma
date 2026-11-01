@@ -94,19 +94,22 @@ model User {
   teachingProjects     Project[]        @relation("ProjectTeacher")
   organizationProjects Project[]        @relation("ProjectOrganization")
   publishedChallenges  Challenge[]      @relation("ChallengeOrganization")
+  ownedClassGroups     ClassGroup[]     @relation("ClassGroupTeacher")
   teamRequests         TeamRequest[]
   ownedActivities      Activity[]       @relation("ActivityOwner")
   progressUpdates      ProgressUpdate[]
   savedProjects        SavedProject[]
   dictamenesEmitidos   Dictamen[]       @relation("DictamenEvaluator")
 
-  activityAssignments      ActivityAssignee[]
-  activityEvents           ActivityEvent[]
-  checklistItemsCompleted  ChecklistItem[]
-  activityAttachments      ActivityAttachment[]
-  activityComments         ActivityComment[]
-  notifications            Notification[]
-  projectResources         ProjectResource[]
+  activityAssignments     ActivityAssignee[]
+  activityEvents          ActivityEvent[]
+  checklistItemsCompleted ChecklistItem[]
+  activityAttachments     ActivityAttachment[]
+  activityComments        ActivityComment[]
+  notifications           Notification[]
+  projectResources        ProjectResource[]
+  classGroupResources     ClassGroupResource[]
+  classGroupMemberships   ClassGroupMember[]
 
   @@map("users")
 }
@@ -128,7 +131,8 @@ model Category {
   colorHex String
   icon     String
 
-  projects ProjectCategory[]
+  projects   ProjectCategory[]
+  challenges ChallengeCategory[]
 
   @@map("categories")
 }
@@ -143,8 +147,9 @@ model Challenge {
   organizationId Int
   organization   User @relation("ChallengeOrganization", fields: [organizationId], references: [id])
 
-  sdgs     ChallengeSdg[]
-  projects Project[]
+  sdgs       ChallengeSdg[]
+  categories ChallengeCategory[]
+  projects   Project[]
 
   @@map("challenges")
 }
@@ -158,6 +163,79 @@ model ChallengeSdg {
 
   @@id([challengeId, sdgId])
   @@map("challenge_sdgs")
+}
+
+model ChallengeCategory {
+  challengeId Int
+  categoryId  Int
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id])
+
+  @@id([challengeId, categoryId])
+  @@map("challenge_categories")
+}
+
+// Teacher-owned container for projects already happening in their class
+// (e.g. "Ingeniería de Software 6to TM") — unlike a Challenge (a public open
+// invitation), this groups projects a teacher is already running, not
+// something to "take on". Its name/description are publicly searchable (a
+// preview tier anyone can see); full content (resources, linked projects,
+// member list) is gated behind self-serve STUDENT membership or teacher
+// ownership — see `buildClassGroupViewer` in class-group.service.ts.
+model ClassGroup {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacherId Int
+  teacher   User @relation("ClassGroupTeacher", fields: [teacherId], references: [id])
+
+  projects  Project[]
+  resources ClassGroupResource[]
+  members   ClassGroupMember[]
+
+  @@map("class_groups")
+}
+
+// Self-serve membership (no teacher approval needed): a STUDENT joins by
+// creating this row themselves; the owning teacher can remove it afterward.
+// Grants the member tier of GET /class-groups/:id (resources + public/own
+// projects) — see `buildClassGroupViewer`.
+model ClassGroupMember {
+  classGroupId Int
+  userId       Int
+  joinedAt     DateTime @default(now())
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@id([classGroupId, userId])
+  @@index([userId])
+  @@map("class_group_members")
+}
+
+// Mirrors ProjectResource exactly, scoped to a ClassGroup instead of a
+// Project (see that model's comment for the EvidenceType reuse rationale).
+model ClassGroupResource {
+  id           Int          @id @default(autoincrement())
+  classGroupId Int
+  creatorId    Int
+  type         EvidenceType
+  url          String
+  fileName     String?
+  mimeType     String?
+  sizeBytes    Int?
+  label        String
+  description  String?
+  createdAt    DateTime     @default(now())
+
+  classGroup ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  creator    User       @relation(fields: [creatorId], references: [id])
+
+  @@map("class_group_resources")
 }
 
 model Project {
@@ -187,6 +265,9 @@ model Project {
 
   challengeId Int?
   challenge   Challenge? @relation(fields: [challengeId], references: [id])
+
+  classGroupId Int?
+  classGroup   ClassGroup? @relation(fields: [classGroupId], references: [id])
 
   sdgs            ProjectSdg[]
   categories      ProjectCategory[]

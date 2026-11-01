@@ -1219,6 +1219,40 @@ async function main() {
 
   // --- Challenges and dictámenes --------------------------------------------
 
+  console.log("Seeding a sample class group...");
+  const existingClassGroup = await prisma.classGroup.findFirst({
+    where: { name: "Ingeniería de Software — 6to TM", teacherId: teacher.id },
+  });
+  const classGroup =
+    existingClassGroup ??
+    (await prisma.classGroup.create({
+      data: {
+        name: "Ingeniería de Software — 6to TM",
+        description:
+          "Grupo de 6to semestre de Ingeniería en Sistemas Computacionales, turno matutino.",
+        teacherId: teacher.id,
+      },
+    }));
+  const existingClassGroupResource = await prisma.classGroupResource.findFirst({
+    where: { classGroupId: classGroup.id, label: "Temario del curso" },
+  });
+  if (!existingClassGroupResource) {
+    await prisma.classGroupResource.create({
+      data: {
+        classGroupId: classGroup.id,
+        creatorId: teacher.id,
+        type: "LINK",
+        url: "https://example.com/temario-ingenieria-software.pdf",
+        label: "Temario del curso",
+        description: "Temario oficial compartido con el grupo al inicio del semestre.",
+      },
+    });
+  }
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { classGroupId: classGroup.id },
+  });
+
   console.log("Seeding a sample challenge...");
   const existingChallenge = await prisma.challenge.findFirst({
     where: { title: "Reducción de residuos sólidos en instituciones educativas" },

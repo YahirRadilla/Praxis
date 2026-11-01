@@ -12,5 +12,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
+export const verifyGoogleSchema = z.object({
+  idToken: z.string().min(1, "El token de Google es obligatorio"),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type VerifyGoogleInput = z.infer<typeof verifyGoogleSchema>;

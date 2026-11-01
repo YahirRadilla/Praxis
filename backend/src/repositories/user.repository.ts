@@ -31,6 +31,13 @@ export function updateUser(id: number, data: UpdateUserData) {
   return prisma.user.update({ where: { id }, data });
 }
 
+export function markUserVerified(id: number) {
+  return prisma.user.update({
+    where: { id },
+    data: { verified: true, verifiedAt: new Date() },
+  });
+}
+
 export interface SearchUsersFilters {
   accountType?: string;
   q?: string;

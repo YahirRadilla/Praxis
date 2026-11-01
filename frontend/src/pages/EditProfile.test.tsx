@@ -11,8 +11,18 @@ vi.mock("../services/api", async () => {
   return {
     ...actual,
     updateProfileRequest: vi.fn(),
+    verifyAccountWithGoogleRequest: vi.fn(),
   };
 });
+
+// Captures the callback GoogleVerifyButton passes to `initialize` so a test
+// can invoke it directly, simulating Google's own script calling back with
+// a credential — there's no real Google script loaded in jsdom.
+let capturedGoogleCallback: ((response: { credential: string }) => void) | null = null;
+const googleInitialize = vi.fn((config: { callback: (response: { credential: string }) => void }) => {
+  capturedGoogleCallback = config.callback;
+});
+const googleRenderButton = vi.fn();
 
 function renderProfile() {
   return renderWithProviders(
@@ -26,6 +36,13 @@ function renderProfile() {
 
 beforeEach(() => {
   vi.mocked(api.updateProfileRequest).mockReset();
+  vi.mocked(api.verifyAccountWithGoogleRequest).mockReset();
+  googleInitialize.mockClear();
+  googleRenderButton.mockClear();
+  capturedGoogleCallback = null;
+  (window as unknown as { google: unknown }).google = {
+    accounts: { id: { initialize: googleInitialize, renderButton: googleRenderButton } },
+  };
 });
 
 describe("EditProfile — pre-fill", () => {
@@ -80,5 +97,64 @@ describe("EditProfile — submit", () => {
 
     await waitFor(() => expect(api.updateProfileRequest).toHaveBeenCalled());
     expect(screen.getByText("Completa tu perfil")).toBeInTheDocument();
+  });
+});
+
+describe("EditProfile — Google account verification", () => {
+  it("shows the Google verify button for an unverified STUDENT", () => {
+    seedAuth({ accountType: "STUDENT", verified: false });
+    renderProfile();
+
+    expect(googleInitialize).toHaveBeenCalled();
+    expect(googleRenderButton).toHaveBeenCalled();
+    expect(screen.queryByText("Cuenta verificada ✓")).not.toBeInTheDocument();
+  });
+
+  it("shows the Google verify button for an unverified TEACHER", () => {
+    seedAuth({ accountType: "TEACHER", verified: false });
+    renderProfile();
+
+    expect(googleInitialize).toHaveBeenCalled();
+  });
+
+  it("shows no verification section for an ORGANIZATION account", () => {
+    seedAuth({ accountType: "ORGANIZATION", verified: false });
+    renderProfile();
+
+    expect(googleInitialize).not.toHaveBeenCalled();
+    expect(screen.queryByText("Cuenta verificada ✓")).not.toBeInTheDocument();
+  });
+
+  it("shows no verification section for an INDEPENDENT account", () => {
+    seedAuth({ accountType: "INDEPENDENT", verified: false });
+    renderProfile();
+
+    expect(googleInitialize).not.toHaveBeenCalled();
+    expect(screen.queryByText("Cuenta verificada ✓")).not.toBeInTheDocument();
+  });
+
+  it("shows a verified badge instead of the button when already verified", () => {
+    seedAuth({ accountType: "STUDENT", verified: true });
+    renderProfile();
+
+    expect(screen.getByText("Cuenta verificada ✓")).toBeInTheDocument();
+    expect(googleInitialize).not.toHaveBeenCalled();
+  });
+
+  it("verifies the account and swaps the button for the verified badge on success", async () => {
+    seedAuth({ accountType: "STUDENT", verified: false });
+    vi.mocked(api.verifyAccountWithGoogleRequest).mockResolvedValue(
+      buildAuthUser({ accountType: "STUDENT", verified: true, verifiedAt: new Date().toISOString() }),
+    );
+
+    renderProfile();
+    expect(capturedGoogleCallback).toBeTruthy();
+
+    capturedGoogleCallback?.({ credential: "fake-id-token" });
+
+    await waitFor(() =>
+      expect(api.verifyAccountWithGoogleRequest).toHaveBeenCalledWith("test-token", "fake-id-token"),
+    );
+    expect(await screen.findByText("Cuenta verificada ✓")).toBeInTheDocument();
   });
 });

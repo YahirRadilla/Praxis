@@ -12,6 +12,8 @@ export const PROJECT_VISIBILITY: Record<string, StatusStyle> = {
 // fg darkened from #8B9199 (~2.76:1 on this bg, fails WCAG AA) to ~5.04:1.
 export const PROJECT_ARCHIVED: StatusStyle = { label: "Archivado", bg: "#F0EFEC", fg: "#5F6670" };
 
+export const USER_VERIFIED: StatusStyle = { label: "Cuenta verificada ✓", bg: "#EAF4EA", fg: "#2D5E3A" };
+
 export const ACTIVITY_STATUS: Record<string, StatusStyle> = {
   PENDING: { label: "Pendiente", bg: "#F0EFEC", fg: "#5A6069" },
   // fg darkened from #0A97D9 (~2.8:1 on this bg, fails WCAG AA) to ~5.8:1.

@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { useUpdateProfile } from "../hooks/useProfile";
 import { getErrorMessage } from "../services/api";
-import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import { CARD_SHADOW, PRIMARY_BUTTON, USER_VERIFIED } from "../utils/statusStyles";
 import { INSTITUTION_NAME } from "../config/institution";
+import GoogleVerifyButton from "../components/GoogleVerifyButton";
+import StatusPill from "../components/StatusPill";
 
 function toCsv(items: string[]): string {
   return items.join(", ");
@@ -108,6 +110,22 @@ function EditProfile() {
           />
           <span className="text-[11px] text-ink-faint">Separados por coma.</span>
         </label>
+
+        {(user?.accountType === "STUDENT" || user?.accountType === "TEACHER") && (
+          <div className="flex flex-col gap-2 border border-rule rounded-lg p-3.5">
+            {user.verified ? (
+              <StatusPill status={USER_VERIFIED} className="self-start" />
+            ) : (
+              <>
+                <p className="text-[12.5px] text-ink-soft m-0">
+                  Confirmá que tu correo institucional es real para que tu cuenta aparezca como
+                  verificada.
+                </p>
+                <GoogleVerifyButton />
+              </>
+            )}
+          </div>
+        )}
 
         <button
           type="submit"

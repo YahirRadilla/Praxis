@@ -114,6 +114,10 @@ export function registerRequest(payload: RegisterPayload) {
   return request<AuthResponse>("/api/auth/register", { method: "POST", body: payload });
 }
 
+export function verifyAccountWithGoogleRequest(token: string, idToken: string) {
+  return request<AuthUser>("/api/auth/verify-google", { method: "POST", token, body: { idToken } });
+}
+
 export function updateProfileRequest(
   token: string,
   payload: { name?: string; skills?: string[]; interests?: string[]; academicProgram?: string },

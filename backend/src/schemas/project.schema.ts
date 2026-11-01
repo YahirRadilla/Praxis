@@ -12,6 +12,7 @@ export const createProjectSchema = z
       .min(1, "Selecciona al menos una categoría")
       .max(3, "Máximo 3 categorías"),
     challengeId: z.number().int().optional(),
+    classGroupId: z.number().int().positive().optional(),
     visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
     // Evaluator invitations sent in the same request as project creation
     // (WU-05 / plan §7 P4): these never fill `teacherId`/`organizationId`

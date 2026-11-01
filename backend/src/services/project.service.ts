@@ -1,5 +1,6 @@
 import type { Project, TeamRequest } from "@prisma/client";
 import {
+  claimEvaluatorSlot,
   createProject as createProjectRepo,
   findProjectById,
   findProjectByIdWithEmail,
@@ -17,6 +18,7 @@ import {
   isAcceptedTeamMember,
 } from "../repositories/team-request.repository";
 import { findChallengeById } from "../repositories/challenge.repository";
+import { assertCanLinkClassGroup } from "./class-group.service";
 import { findUserById } from "../repositories/user.repository";
 import { prisma } from "../repositories/prisma-client";
 import { notifyUser } from "./notification.service";
@@ -88,9 +90,24 @@ export async function createProject(ownerId: number, input: CreateProjectInput) 
     }
   }
 
+  let classGroupTeacherId: number | undefined;
+  if (rest.classGroupId !== undefined) {
+    // Bug fix: membership (or ownership) must already exist before the
+    // group can be linked — a classGroupId used to be accepted from
+    // anyone, with no check beyond "does it exist" (plan's Bug B).
+    classGroupTeacherId = await assertCanLinkClassGroup(rest.classGroupId, ownerId);
+  }
+
   const invites = evaluatorInviteIds ?? [];
   const usedSlots = new Set<EvaluatorSlot>();
   const resolvedInvites: { userId: number; slot: EvaluatorSlot }[] = [];
+
+  // The class group's teacher already reserves the "teacherId" slot (see
+  // below) — reject a separate teacher invite instead of silently
+  // conflicting with it.
+  if (classGroupTeacherId !== undefined) {
+    usedSlots.add("teacherId");
+  }
 
   for (const inviteId of invites) {
     const slot = await classifyEvaluatorInvite(inviteId, ownerId);
@@ -108,11 +125,25 @@ export async function createProject(ownerId: number, input: CreateProjectInput) 
 
   // Create the project and every pending EVALUATOR TeamRequest in one
   // transaction (plan §7 P4): the invites never fill teacherId/organizationId
-  // here — only accepting them does (see claimEvaluatorSlot).
+  // here — only accepting them does (see claimEvaluatorSlot). The class
+  // group's teacher is the one exception: they already consented by owning
+  // the group the student joined, so they're linked and accepted directly.
   const project = await prisma.$transaction(async (tx) => {
     const created = await createProjectRepo(data, tx);
     for (const invite of resolvedInvites) {
       await createTeamRequest(created.id, invite.userId, undefined, "OWNER", "EVALUATOR", tx);
+    }
+    if (classGroupTeacherId !== undefined) {
+      await claimEvaluatorSlot(created.id, "teacherId", classGroupTeacherId, tx);
+      await createTeamRequest(
+        created.id,
+        classGroupTeacherId,
+        undefined,
+        "OWNER",
+        "EVALUATOR",
+        tx,
+        "ACCEPTED",
+      );
     }
     return created;
   });

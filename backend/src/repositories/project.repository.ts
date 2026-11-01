@@ -16,6 +16,7 @@ export const projectInclude = {
   teacher: { select: personSelect },
   organization: { select: personSelect },
   challenge: { select: { id: true, title: true } },
+  classGroup: { select: { id: true, name: true } },
   sdgs: { include: { sdg: true } },
   categories: { include: { category: true } },
 } satisfies Prisma.ProjectInclude;
@@ -37,6 +38,7 @@ export interface CreateProjectData {
   // filled by accepting an EVALUATOR-purpose TeamRequest (see
   // claimEvaluatorSlot below), never at creation (plan decision #6).
   challengeId?: number;
+  classGroupId?: number;
   sdgIds: number[];
   categoryIds: number[];
   visibility?: ProjectVisibility;

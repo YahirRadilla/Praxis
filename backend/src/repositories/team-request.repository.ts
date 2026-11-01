@@ -47,11 +47,17 @@ export function createTeamRequest(
   initiatedBy: TeamRequestInitiator = "REQUESTER",
   purpose: TeamRequestPurpose = "MEMBER",
   tx: TxClient = prisma,
+  // Pre-accepted at creation only for the class-group-owning teacher's
+  // implicit evaluator link (project.service's createProject) — their
+  // consent is already expressed by owning the group the student joined.
+  // Every other caller leaves this at the default and goes through the
+  // normal invite/accept flow.
+  status: TeamRequestStatus = "PENDING",
 ) {
   // `role` is left to its schema default (COLLABORATOR): OWNER is never
   // persisted (listTeam synthesizes it).
   return tx.teamRequest.create({
-    data: { projectId, userId, message, initiatedBy, purpose },
+    data: { projectId, userId, message, initiatedBy, purpose, status, resolvedAt: status === "PENDING" ? null : new Date() },
     include: { user: { select: memberSelect } },
   });
 }

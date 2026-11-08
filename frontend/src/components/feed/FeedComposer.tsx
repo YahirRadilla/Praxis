@@ -4,9 +4,11 @@ import { Paperclip } from "@phosphor-icons/react";
 import { useAuth } from "../../context/AuthContext";
 import { useMyProjects } from "../../hooks/useProjects";
 import { useCreateFeedPost } from "../../hooks/useProgressUpdates";
+import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
 import { getErrorMessage, uploadFileRequest } from "../../services/api";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
 import AttachmentPreviewGrid from "../evidence/AttachmentPreviewGrid";
+import FieldValidationHint from "../FieldValidationHint";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGES_PER_POST = 6;
@@ -42,6 +44,7 @@ function FeedComposer() {
   // show up here even though `useMyProjects` includes it.
   const postableProjects = myProjects?.filter((p) => p.viewer?.canPost);
   const createFeedPost = useCreateFeedPost();
+  const { hintMessage, validateRequired, dismissHint, isHintVisible } = useRequiredFieldHint();
 
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState<number | "">("");
@@ -133,6 +136,7 @@ function FeedComposer() {
       toast.error("Elige a qué proyecto pertenece este avance.");
       return;
     }
+    if (!validateRequired([{ key: "text", value: text }])) return;
 
     const fileEvidence = attachments
       .filter((a): a is ComposerAttachment & { result: NonNullable<ComposerAttachment["result"]> } =>
@@ -181,7 +185,7 @@ function FeedComposer() {
           Comparte un avance de tu proyecto
         </button>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2.5">
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : "")}
@@ -194,14 +198,19 @@ function FeedComposer() {
               </option>
             ))}
           </select>
-          <textarea
-            required
-            rows={3}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="¿Qué avanzaste?"
-            className="border border-rule rounded-lg bg-paper px-3 py-2.5 text-[13px] text-ink resize-none"
-          />
+          <div className="relative">
+            <textarea
+              rows={3}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (isHintVisible("text")) dismissHint();
+              }}
+              placeholder="¿Qué avanzaste?"
+              className="w-full border border-rule rounded-lg bg-paper px-3 py-2.5 text-[13px] text-ink resize-none"
+            />
+            <FieldValidationHint message={hintMessage} show={isHintVisible("text")} />
+          </div>
           <AttachmentPreviewGrid
             attachments={attachments}
             onRemove={removeAttachment}

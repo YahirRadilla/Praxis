@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { CaretDown, Plus, Tag } from "@phosphor-icons/react";
 import { useCreateLabel, useLabels } from "../../hooks/useLabels";
+import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
 import { getErrorMessage } from "../../services/api";
 import { CARD_SHADOW } from "../../utils/statusStyles";
 import { pluralize } from "../../utils/text";
+import FieldValidationHint from "../FieldValidationHint";
 
 interface LabelPickerProps {
   projectId: number;
@@ -18,6 +20,7 @@ const DEFAULT_SWATCH = "#19486A";
 function LabelPicker({ projectId, value, onChange, disabled }: LabelPickerProps) {
   const { data: labels } = useLabels(projectId);
   const createLabel = useCreateLabel(projectId);
+  const { hintMessage, validateRequired, dismissHint, isHintVisible } = useRequiredFieldHint();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -47,6 +50,7 @@ function LabelPicker({ projectId, value, onChange, disabled }: LabelPickerProps)
 
   function handleCreate(e: FormEvent) {
     e.preventDefault();
+    if (!validateRequired([{ key: "labelName", value: name }])) return;
     createLabel.mutate(
       { name, colorHex },
       {
@@ -126,7 +130,7 @@ function LabelPicker({ projectId, value, onChange, disabled }: LabelPickerProps)
 
           <div className="border-t border-rule mt-1 pt-1">
             {creating ? (
-              <form onSubmit={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5">
+              <form onSubmit={handleCreate} noValidate className="flex items-center gap-1.5 px-3 py-1.5">
                 <input
                   type="color"
                   value={colorHex}
@@ -134,15 +138,20 @@ function LabelPicker({ projectId, value, onChange, disabled }: LabelPickerProps)
                   className="w-6 h-6 shrink-0 cursor-pointer rounded border border-rule"
                   aria-label="Color de la etiqueta"
                 />
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nombre"
-                  className="flex-1 min-w-0 border border-rule rounded-lg bg-paper px-2 py-1 text-[12px] text-ink"
-                />
+                <div className="relative flex-1 min-w-0">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (isHintVisible("labelName")) dismissHint();
+                    }}
+                    placeholder="Nombre"
+                    className="w-full border border-rule rounded-lg bg-paper px-2 py-1 text-[12px] text-ink"
+                  />
+                  <FieldValidationHint message={hintMessage} show={isHintVisible("labelName")} />
+                </div>
                 <button
                   type="submit"
                   disabled={createLabel.isPending}

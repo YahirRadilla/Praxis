@@ -7,6 +7,7 @@ import Footer from "../components/Footer";
 import ProjectRow from "../components/ProjectRow";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FileDropzone from "../components/FileDropzone";
+import FieldValidationHint from "../components/FieldValidationHint";
 import { useAuth } from "../context/AuthContext";
 import {
   useAddClassGroupResource,
@@ -19,6 +20,7 @@ import {
   useUpdateClassGroup,
 } from "../hooks/useClassGroups";
 import { useUploadFile } from "../hooks/useProgressUpdates";
+import { useRequiredFieldHint } from "../hooks/useRequiredFieldHint";
 import { getErrorMessage } from "../services/api";
 import { classGroupCounts } from "../utils/classGroup";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
@@ -48,6 +50,7 @@ function GrupoClaseDetalle() {
   const joinClassGroup = useJoinClassGroup(classGroupId);
   const leaveClassGroup = useLeaveClassGroup(classGroupId);
   const removeMember = useRemoveClassGroupMember(classGroupId);
+  const { hintMessage, validateRequired, dismissHint, isHintVisible } = useRequiredFieldHint();
 
   const [showEditForm, setShowEditForm] = useState(false);
   const [editName, setEditName] = useState("");
@@ -121,6 +124,13 @@ function GrupoClaseDetalle() {
 
   function handleSaveEdit(e: FormEvent) {
     e.preventDefault();
+    if (
+      !validateRequired([
+        { key: "editName", value: editName },
+        { key: "editDescription", value: editDescription },
+      ])
+    )
+      return;
     updateClassGroup.mutate(
       { name: editName.trim(), description: editDescription.trim() },
       {
@@ -145,7 +155,9 @@ function GrupoClaseDetalle() {
 
   function handleAddResource(e: FormEvent) {
     e.preventDefault();
-    if (!resourceLabel.trim()) return;
+    const requiredFields = [{ key: "resourceLabel", value: resourceLabel }];
+    if (resourceMode === "link") requiredFields.push({ key: "resourceUrl", value: resourceUrl });
+    if (!validateRequired(requiredFields)) return;
     if (resourceMode === "file" && !resourceFile) return;
 
     const payload =
@@ -222,25 +234,35 @@ function GrupoClaseDetalle() {
         <section className="flex-1 min-w-0 flex flex-col gap-6">
           <div className={`bg-paper-raised border border-rule rounded-xl p-6 flex flex-col gap-4 ${CARD_SHADOW}`}>
             {showEditForm ? (
-              <form onSubmit={handleSaveEdit} className="flex flex-col gap-3">
+              <form onSubmit={handleSaveEdit} noValidate className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[12.5px] font-semibold text-ink">Nombre del grupo</span>
-                  <input
-                    required
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
-                  />
+                  <div className="relative">
+                    <input
+                      value={editName}
+                      onChange={(e) => {
+                        setEditName(e.target.value);
+                        if (isHintVisible("editName")) dismissHint();
+                      }}
+                      className="w-full border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+                    />
+                    <FieldValidationHint message={hintMessage} show={isHintVisible("editName")} />
+                  </div>
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[12.5px] font-semibold text-ink">Descripción</span>
-                  <textarea
-                    required
-                    rows={4}
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink resize-none focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
-                  />
+                  <div className="relative">
+                    <textarea
+                      rows={4}
+                      value={editDescription}
+                      onChange={(e) => {
+                        setEditDescription(e.target.value);
+                        if (isHintVisible("editDescription")) dismissHint();
+                      }}
+                      className="w-full border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink resize-none focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+                    />
+                    <FieldValidationHint message={hintMessage} show={isHintVisible("editDescription")} />
+                  </div>
                 </label>
                 <div className="flex items-center gap-2 self-end">
                   <button
@@ -325,15 +347,21 @@ function GrupoClaseDetalle() {
                 {showAddResourceForm && (
                   <form
                     onSubmit={handleAddResource}
+                    noValidate
                     className="flex flex-col gap-2 bg-paper border border-rule rounded-xl p-4"
                   >
-                    <input
-                      required
-                      value={resourceLabel}
-                      onChange={(e) => setResourceLabel(e.target.value)}
-                      placeholder="Título (ej. Rúbrica de evaluación)"
-                      className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                    />
+                    <div className="relative">
+                      <input
+                        value={resourceLabel}
+                        onChange={(e) => {
+                          setResourceLabel(e.target.value);
+                          if (isHintVisible("resourceLabel")) dismissHint();
+                        }}
+                        placeholder="Título (ej. Rúbrica de evaluación)"
+                        className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                      />
+                      <FieldValidationHint message={hintMessage} show={isHintVisible("resourceLabel")} />
+                    </div>
                     <textarea
                       rows={2}
                       value={resourceDescription}
@@ -364,14 +392,19 @@ function GrupoClaseDetalle() {
                       </div>
 
                       {resourceMode === "link" ? (
-                        <input
-                          required
-                          type="url"
-                          value={resourceUrl}
-                          onChange={(e) => setResourceUrl(e.target.value)}
-                          placeholder="https://…"
-                          className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                        />
+                        <div className="relative">
+                          <input
+                            type="url"
+                            value={resourceUrl}
+                            onChange={(e) => {
+                              setResourceUrl(e.target.value);
+                              if (isHintVisible("resourceUrl")) dismissHint();
+                            }}
+                            placeholder="https://…"
+                            className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                          />
+                          <FieldValidationHint message={hintMessage} show={isHintVisible("resourceUrl")} />
+                        </div>
                       ) : (
                         <div className="flex flex-col gap-2">
                           <FileDropzone

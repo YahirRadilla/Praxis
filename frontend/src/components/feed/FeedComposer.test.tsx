@@ -313,3 +313,38 @@ describe("FeedComposer — file uploads", () => {
     expect(api.uploadFileRequest).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("FeedComposer — required text field hint (replaces native browser validation)", () => {
+  it("blocks submission and shows a custom hint when the text is empty, then succeeds once filled", async () => {
+    seedAuth();
+    vi.mocked(api.createProgressUpdateRequest).mockResolvedValue({
+      id: 1,
+      projectId: 1,
+      activityId: null,
+      authorId: 1,
+      text: "Avance",
+      postedToFeed: true,
+      validated: false,
+      createdAt: new Date().toISOString(),
+      author: { id: 1, name: "Estudiante" },
+      evidence: [],
+    });
+
+    const user = await openComposer();
+    await user.selectOptions(screen.getByRole("combobox"), "1");
+
+    // Submitting with the required textarea empty must not call the
+    // create-post API, and must show the custom hint instead of relying on
+    // the browser's native HTML5 validation popup.
+    await user.click(screen.getByRole("button", { name: "Publicar" }));
+
+    expect(await screen.findByText("Completa este campo.")).toBeInTheDocument();
+    expect(api.createProgressUpdateRequest).not.toHaveBeenCalled();
+
+    // Typing into the flagged field and resubmitting succeeds.
+    await user.type(screen.getByPlaceholderText("¿Qué avanzaste?"), "Avance");
+    await user.click(screen.getByRole("button", { name: "Publicar" }));
+
+    await waitFor(() => expect(api.createProgressUpdateRequest).toHaveBeenCalled());
+  });
+});

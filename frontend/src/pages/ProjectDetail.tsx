@@ -14,6 +14,7 @@ import ActivityDetailModal from "../components/activities/ActivityDetailModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FileDropzone from "../components/FileDropzone";
 import AttachmentPreviewGrid from "../components/evidence/AttachmentPreviewGrid";
+import FieldValidationHint from "../components/FieldValidationHint";
 import { Lateral, LateralCard } from "../components/LayoutPrimitives";
 import type { ProjectPersonRef } from "../types/project";
 import type { DictamenVerdict } from "../types/dictamen";
@@ -44,6 +45,7 @@ import {
 import { useActivities } from "../hooks/useActivities";
 import { useProgressUpdates, useCreateProgressUpdate, useUploadFile } from "../hooks/useProgressUpdates";
 import { useDictamenes, useCreateDictamen } from "../hooks/useDictamenes";
+import { useRequiredFieldHint } from "../hooks/useRequiredFieldHint";
 import { getErrorMessage, uploadFileRequest } from "../services/api";
 import StatusPill from "../components/StatusPill";
 import {
@@ -137,6 +139,7 @@ function ProjectDetail() {
   const saveProject = useSaveProject();
   const unsaveProject = useUnsaveProject();
   const updateProject = useUpdateProject(projectId);
+  const { hintMessage, validateRequired, dismissHint, isHintVisible } = useRequiredFieldHint();
 
   const [progressText, setProgressText] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
@@ -412,6 +415,7 @@ function ProjectDetail() {
 
   function handleCreateProgressUpdate(e: FormEvent) {
     e.preventDefault();
+    if (!validateRequired([{ key: "progressText", value: progressText }])) return;
     const fileEvidence = evidenceAttachments
       .filter((a): a is EvidenceAttachment & { result: NonNullable<EvidenceAttachment["result"]> } =>
         a.status === "done" && !!a.result,
@@ -487,6 +491,7 @@ function ProjectDetail() {
 
   function handleCreateDictamen(e: FormEvent) {
     e.preventDefault();
+    if (!validateRequired([{ key: "dictamenComment", value: dictamenComment }])) return;
     createDictamen.mutate(
       { verdict: dictamenVerdict, comment: dictamenComment },
       {
@@ -534,7 +539,9 @@ function ProjectDetail() {
 
   function handleAddResource(e: FormEvent) {
     e.preventDefault();
-    if (!resourceLabel.trim()) return;
+    const requiredFields = [{ key: "resourceLabel", value: resourceLabel }];
+    if (resourceMode === "link") requiredFields.push({ key: "resourceUrl", value: resourceUrl });
+    if (!validateRequired(requiredFields)) return;
     if (resourceMode === "file" && !resourceFile) return;
 
     const payload =
@@ -800,16 +807,22 @@ function ProjectDetail() {
                 {showProgressForm && (
                   <form
                     onSubmit={handleCreateProgressUpdate}
+                    noValidate
                     className="flex flex-col gap-2 bg-paper border border-rule rounded-xl p-4"
                   >
-                    <textarea
-                      required
-                      rows={2}
-                      value={progressText}
-                      onChange={(e) => setProgressText(e.target.value)}
-                      placeholder="Comparte algo sobre el proyecto: una foto, un enlace, una reflexión."
-                      className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
-                    />
+                    <div className="relative">
+                      <textarea
+                        rows={2}
+                        value={progressText}
+                        onChange={(e) => {
+                          setProgressText(e.target.value);
+                          if (isHintVisible("progressText")) dismissHint();
+                        }}
+                        placeholder="Comparte algo sobre el proyecto: una foto, un enlace, una reflexión."
+                        className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
+                      />
+                      <FieldValidationHint message={hintMessage} show={isHintVisible("progressText")} />
+                    </div>
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-1 self-start rounded-full bg-surface-ground p-1">
                         <button
@@ -965,7 +978,7 @@ function ProjectDetail() {
                   )}
 
                   {canSubmitDictamen && (
-                    <form onSubmit={handleCreateDictamen} className="flex flex-col gap-2 pt-2 border-t border-rule">
+                    <form onSubmit={handleCreateDictamen} noValidate className="flex flex-col gap-2 pt-2 border-t border-rule">
                       <div className="flex gap-3">
                         <label className="flex items-center gap-1.5 text-[12px] text-ink cursor-pointer">
                           <input
@@ -986,14 +999,19 @@ function ProjectDetail() {
                           Sugiere cambios
                         </label>
                       </div>
-                      <textarea
-                        value={dictamenComment}
-                        onChange={(e) => setDictamenComment(e.target.value)}
-                        required
-                        placeholder="Comentario"
-                        rows={3}
-                        className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
-                      />
+                      <div className="relative">
+                        <textarea
+                          value={dictamenComment}
+                          onChange={(e) => {
+                            setDictamenComment(e.target.value);
+                            if (isHintVisible("dictamenComment")) dismissHint();
+                          }}
+                          placeholder="Comentario"
+                          rows={3}
+                          className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink resize-none"
+                        />
+                        <FieldValidationHint message={hintMessage} show={isHintVisible("dictamenComment")} />
+                      </div>
                       <button
                         type="submit"
                         disabled={createDictamen.isPending}
@@ -1221,15 +1239,21 @@ function ProjectDetail() {
               {showAddResourceForm && (
                 <form
                   onSubmit={handleAddResource}
+                  noValidate
                   className="flex flex-col gap-2 bg-paper border border-rule rounded-xl p-4"
                 >
-                  <input
-                    required
-                    value={resourceLabel}
-                    onChange={(e) => setResourceLabel(e.target.value)}
-                    placeholder="Título (ej. Manual de usuario)"
-                    className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                  />
+                  <div className="relative">
+                    <input
+                      value={resourceLabel}
+                      onChange={(e) => {
+                        setResourceLabel(e.target.value);
+                        if (isHintVisible("resourceLabel")) dismissHint();
+                      }}
+                      placeholder="Título (ej. Manual de usuario)"
+                      className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                    />
+                    <FieldValidationHint message={hintMessage} show={isHintVisible("resourceLabel")} />
+                  </div>
                   <textarea
                     rows={2}
                     value={resourceDescription}
@@ -1260,14 +1284,19 @@ function ProjectDetail() {
                     </div>
 
                     {resourceMode === "link" ? (
-                      <input
-                        required
-                        type="url"
-                        value={resourceUrl}
-                        onChange={(e) => setResourceUrl(e.target.value)}
-                        placeholder="https://…"
-                        className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-                      />
+                      <div className="relative">
+                        <input
+                          type="url"
+                          value={resourceUrl}
+                          onChange={(e) => {
+                            setResourceUrl(e.target.value);
+                            if (isHintVisible("resourceUrl")) dismissHint();
+                          }}
+                          placeholder="https://…"
+                          className="w-full border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                        />
+                        <FieldValidationHint message={hintMessage} show={isHintVisible("resourceUrl")} />
+                      </div>
                     ) : (
                       <div className="flex flex-col gap-2">
                         <FileDropzone

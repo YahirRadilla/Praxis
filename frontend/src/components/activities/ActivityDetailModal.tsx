@@ -23,6 +23,8 @@ import DatePicker from "../DatePicker";
 import ConfirmDialog from "../ConfirmDialog";
 import Skeleton from "../Skeleton";
 import FileDropzone from "../FileDropzone";
+import FieldValidationHint from "../FieldValidationHint";
+import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
 import {
   useActivityDetail,
   useCreateActivityAttachment,
@@ -93,6 +95,7 @@ function ActivityDetailModal({
   onClose,
 }: ActivityDetailModalProps) {
   const { user, token } = useAuth();
+  const { hintMessage, validateRequired, dismissHint, isHintVisible } = useRequiredFieldHint();
   const { data: activity, isLoading, isError } = useActivityDetail(projectId, activityId);
   const updateActivity = useUpdateActivity(projectId, activityId);
   const deleteActivity = useDeleteActivity(projectId);
@@ -197,7 +200,7 @@ function ActivityDetailModal({
 
   function handleAddSection(e: FormEvent) {
     e.preventDefault();
-    if (!newSectionName.trim()) return;
+    if (!validateRequired([{ key: "sectionName", value: newSectionName }])) return;
     createSection.mutate(
       { name: newSectionName.trim() },
       {
@@ -212,7 +215,7 @@ function ActivityDetailModal({
 
   function handleAddItem(e: FormEvent, sectionId: number | undefined) {
     e.preventDefault();
-    if (!newItemText.trim()) return;
+    if (!validateRequired([{ key: "itemText", value: newItemText }])) return;
     createItem.mutate(
       { text: newItemText.trim(), sectionId },
       {
@@ -452,8 +455,13 @@ function ActivityDetailModal({
                           setNewItemText("");
                         }}
                         newItemText={newItemText}
-                        onNewItemTextChange={setNewItemText}
+                        onNewItemTextChange={(v) => {
+                          setNewItemText(v);
+                          if (isHintVisible("itemText")) dismissHint();
+                        }}
                         onSubmitAdd={(e) => handleAddItem(e, section.id)}
+                        hintMessage={hintMessage}
+                        showHint={isHintVisible("itemText")}
                       />
                     ))}
 
@@ -470,22 +478,32 @@ function ActivityDetailModal({
                         setNewItemText("");
                       }}
                       newItemText={newItemText}
-                      onNewItemTextChange={setNewItemText}
+                      onNewItemTextChange={(v) => {
+                        setNewItemText(v);
+                        if (isHintVisible("itemText")) dismissHint();
+                      }}
                       onSubmitAdd={(e) => handleAddItem(e, undefined)}
+                      hintMessage={hintMessage}
+                      showHint={isHintVisible("itemText")}
                     />
 
                     {!readOnly &&
                       (addingSection ? (
-                        <form onSubmit={handleAddSection} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            required
-                            value={newSectionName}
-                            onChange={(e) => setNewSectionName(e.target.value)}
-                            placeholder="Nombre de la sección"
-                            className="flex-1 border border-rule rounded-lg bg-paper px-3 py-1.5 text-[12.5px] text-ink"
-                          />
+                        <form onSubmit={handleAddSection} noValidate className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={newSectionName}
+                              onChange={(e) => {
+                                setNewSectionName(e.target.value);
+                                if (isHintVisible("sectionName")) dismissHint();
+                              }}
+                              placeholder="Nombre de la sección"
+                              className="w-full border border-rule rounded-lg bg-paper px-3 py-1.5 text-[12.5px] text-ink"
+                            />
+                            <FieldValidationHint message={hintMessage} show={isHintVisible("sectionName")} />
+                          </div>
                           <button
                             type="submit"
                             className="text-[12px] font-bold text-accent-primary cursor-pointer shrink-0"
@@ -737,6 +755,8 @@ interface ChecklistSectionBlockProps {
   newItemText: string;
   onNewItemTextChange: (value: string) => void;
   onSubmitAdd: (e: FormEvent) => void;
+  hintMessage: string;
+  showHint: boolean;
 }
 
 function ChecklistSectionBlock({
@@ -753,6 +773,8 @@ function ChecklistSectionBlock({
   newItemText,
   onNewItemTextChange,
   onSubmitAdd,
+  hintMessage,
+  showHint,
 }: ChecklistSectionBlockProps) {
   const [nameDraft, setNameDraft] = useState(section.name);
 
@@ -794,7 +816,18 @@ function ChecklistSectionBlock({
           />
         ))}
       </div>
-      {!readOnly && <AddItemControl adding={adding} onStart={onStartAdd} onCancel={onCancelAdd} text={newItemText} onTextChange={onNewItemTextChange} onSubmit={onSubmitAdd} />}
+      {!readOnly && (
+        <AddItemControl
+          adding={adding}
+          onStart={onStartAdd}
+          onCancel={onCancelAdd}
+          text={newItemText}
+          onTextChange={onNewItemTextChange}
+          onSubmit={onSubmitAdd}
+          hintMessage={hintMessage}
+          showHint={showHint}
+        />
+      )}
     </div>
   );
 }
@@ -811,6 +844,8 @@ function UnsectionedChecklistBlock({
   newItemText,
   onNewItemTextChange,
   onSubmitAdd,
+  hintMessage,
+  showHint,
 }: {
   items: ChecklistItem[];
   readOnly: boolean;
@@ -823,6 +858,8 @@ function UnsectionedChecklistBlock({
   newItemText: string;
   onNewItemTextChange: (value: string) => void;
   onSubmitAdd: (e: FormEvent) => void;
+  hintMessage: string;
+  showHint: boolean;
 }) {
   if (items.length === 0 && readOnly) return null;
 
@@ -843,7 +880,18 @@ function UnsectionedChecklistBlock({
           />
         ))}
       </div>
-      {!readOnly && <AddItemControl adding={adding} onStart={onStartAdd} onCancel={onCancelAdd} text={newItemText} onTextChange={onNewItemTextChange} onSubmit={onSubmitAdd} />}
+      {!readOnly && (
+        <AddItemControl
+          adding={adding}
+          onStart={onStartAdd}
+          onCancel={onCancelAdd}
+          text={newItemText}
+          onTextChange={onNewItemTextChange}
+          onSubmit={onSubmitAdd}
+          hintMessage={hintMessage}
+          showHint={showHint}
+        />
+      )}
     </div>
   );
 }
@@ -855,6 +903,8 @@ function AddItemControl({
   text,
   onTextChange,
   onSubmit,
+  hintMessage,
+  showHint,
 }: {
   adding: boolean;
   onStart: () => void;
@@ -862,6 +912,8 @@ function AddItemControl({
   text: string;
   onTextChange: (value: string) => void;
   onSubmit: (e: FormEvent) => void;
+  hintMessage: string;
+  showHint: boolean;
 }) {
   if (!adding) {
     return (
@@ -876,16 +928,18 @@ function AddItemControl({
     );
   }
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2 pl-1">
-      <input
-        type="text"
-        autoFocus
-        required
-        value={text}
-        onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Nuevo pendiente"
-        className="flex-1 border border-rule rounded-lg bg-paper px-2.5 py-1.5 text-[12px] text-ink"
-      />
+    <form onSubmit={onSubmit} noValidate className="flex items-center gap-2 pl-1">
+      <div className="relative flex-1">
+        <input
+          type="text"
+          autoFocus
+          value={text}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder="Nuevo pendiente"
+          className="w-full border border-rule rounded-lg bg-paper px-2.5 py-1.5 text-[12px] text-ink"
+        />
+        <FieldValidationHint message={hintMessage} show={showHint} />
+      </div>
       <button type="submit" className="text-[11.5px] font-bold text-accent-primary cursor-pointer shrink-0">
         Agregar
       </button>

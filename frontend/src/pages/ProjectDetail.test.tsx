@@ -26,8 +26,21 @@ vi.mock("../services/api", async () => {
     searchUsersRequest: vi.fn(),
     getUnreadCountRequest: vi.fn(),
     listNotificationsRequest: vi.fn(),
+    uploadFileRequest: vi.fn(),
   };
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+function makeImageFile(name: string): File {
+  return new File([new Uint8Array(8)], name, { type: "image/png" });
+}
 
 const OWNER = { id: 1, name: "Dueña del Proyecto", accountType: "STUDENT" };
 
@@ -96,6 +109,11 @@ beforeEach(() => {
   vi.mocked(api.unarchiveProjectRequest).mockReset();
   vi.mocked(api.updateProjectRequest).mockReset();
   vi.mocked(api.createDictamenRequest).mockReset();
+  vi.mocked(api.uploadFileRequest).mockReset();
+  // jsdom doesn't implement these — AttachmentPreviewGrid calls them for
+  // image thumbnail previews.
+  URL.createObjectURL = vi.fn(() => "blob:mock-url");
+  URL.revokeObjectURL = vi.fn();
 });
 
 describe("ProjectDetail — outsider tier (not authenticated)", () => {
@@ -172,6 +190,55 @@ describe("ProjectDetail — owner tier", () => {
     const unarchiveButtons = screen.getAllByRole("button", { name: "Desarchivar" });
     await user.click(unarchiveButtons[0]);
     await waitFor(() => expect(api.unarchiveProjectRequest).toHaveBeenCalledWith("test-token", 5));
+  });
+});
+
+describe("ProjectDetail — concurrent evidence uploads (regression)", () => {
+  it("resolves two concurrently selected evidence files independently, even when the second one's response arrives first", async () => {
+    seedAuth({ accountType: "STUDENT", id: 2 });
+    vi.mocked(api.getProjectRequest).mockResolvedValue(
+      projectFixture({ viewer: viewerFixture({ isMember: true, canPost: true, canSeeBoard: true }) }),
+    );
+
+    const defs = {
+      "img1.png": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+      "img2.png": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+    };
+    vi.mocked(api.uploadFileRequest).mockImplementation((_token, file) => defs[file.name as keyof typeof defs].promise);
+
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Compartir algo" }));
+    await user.click(screen.getByRole("button", { name: "Subir un archivo" }));
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, [makeImageFile("img1.png"), makeImageFile("img2.png")]);
+
+    await waitFor(() => expect(api.uploadFileRequest).toHaveBeenCalledTimes(2));
+
+    // Resolve the SECOND file's upload before the first one's — this is
+    // exactly the race that left earlier files stuck on "Subiendo…" forever
+    // when both calls shared one `useMutation()` instance.
+    defs["img2.png"].resolve({
+      url: "https://cdn.example.com/img2.png",
+      fileName: "img2.png",
+      mimeType: "image/png",
+      sizeBytes: 8,
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Ver vista previa de img2.png")).toBeInTheDocument(),
+    );
+
+    defs["img1.png"].resolve({
+      url: "https://cdn.example.com/img1.png",
+      fileName: "img1.png",
+      mimeType: "image/png",
+      sizeBytes: 8,
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Ver vista previa de img1.png")).toBeInTheDocument(),
+    );
   });
 });
 

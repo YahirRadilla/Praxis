@@ -255,6 +255,45 @@ describe("FeedComposer — file uploads", () => {
     expect(api.uploadFileRequest).not.toHaveBeenCalled();
   });
 
+  it("resolves two concurrently selected files independently, even when the second one's response arrives first", async () => {
+    seedAuth();
+    const defs = {
+      "img1.jpg": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+      "img2.png": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+    };
+    vi.mocked(api.uploadFileRequest).mockImplementation((_token, file: File) =>
+      defs[file.name as keyof typeof defs].promise,
+    );
+
+    const user = await openComposer();
+    const input = screen.getByLabelText("Adjuntar archivos");
+    await user.upload(input, [makeFile("img1.jpg", "image/jpeg"), makeFile("img2.png", "image/png")]);
+
+    await waitFor(() => expect(api.uploadFileRequest).toHaveBeenCalledTimes(2));
+
+    // Out-of-order resolution: the second file's response lands first —
+    // both must still reach "done" on their own, independently.
+    defs["img2.png"].resolve({
+      url: "https://cdn.example.com/img2.png",
+      fileName: "img2.png",
+      mimeType: "image/png",
+      sizeBytes: 1024,
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Ver vista previa de img2.png")).toBeInTheDocument(),
+    );
+
+    defs["img1.jpg"].resolve({
+      url: "https://cdn.example.com/img1.jpg",
+      fileName: "img1.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 1024,
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Ver vista previa de img1.jpg")).toBeInTheDocument(),
+    );
+  });
+
   it("rejects a second PDF while one is already attached/attaching", async () => {
     seedAuth();
     const pending = deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>();

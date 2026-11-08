@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
-import { FilePdf, Paperclip, X } from "@phosphor-icons/react";
+import { Paperclip } from "@phosphor-icons/react";
 import { useAuth } from "../../context/AuthContext";
 import { useMyProjects } from "../../hooks/useProjects";
-import { useCreateFeedPost, useUploadFile } from "../../hooks/useProgressUpdates";
-import { getErrorMessage } from "../../services/api";
+import { useCreateFeedPost } from "../../hooks/useProgressUpdates";
+import { getErrorMessage, uploadFileRequest } from "../../services/api";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
+import AttachmentPreviewGrid from "../evidence/AttachmentPreviewGrid";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGES_PER_POST = 6;
@@ -34,14 +35,13 @@ function nextLocalId(): string {
 }
 
 function FeedComposer() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { data: myProjects } = useMyProjects();
   // Only projects the viewer can actually post to (accepted member, not
   // archived) — WU-09. An evaluator or a pending-invite project shouldn't
   // show up here even though `useMyProjects` includes it.
   const postableProjects = myProjects?.filter((p) => p.viewer?.canPost);
   const createFeedPost = useCreateFeedPost();
-  const uploadFile = useUploadFile();
 
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState<number | "">("");
@@ -50,36 +50,12 @@ function FeedComposer() {
   const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Caches one object URL per image attachment so the thumbnail doesn't get
-  // re-created (and its previous URL leaked) on every re-render — revoked
-  // explicitly when that attachment is removed, and on unmount below.
-  const objectUrlsRef = useRef<Map<string, string>>(new Map());
-
-  useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      objectUrlsRef.current.clear();
-    };
-  }, []);
-
-  function getObjectUrl(attachment: ComposerAttachment): string {
-    const cached = objectUrlsRef.current.get(attachment.localId);
-    if (cached) return cached;
-    const url = URL.createObjectURL(attachment.file);
-    objectUrlsRef.current.set(attachment.localId, url);
-    return url;
-  }
-
-  function revokeObjectUrl(localId: string) {
-    const url = objectUrlsRef.current.get(localId);
-    if (url) {
-      URL.revokeObjectURL(url);
-      objectUrlsRef.current.delete(localId);
-    }
-  }
+  // Object-URL lifecycle for attachment thumbnails/previews is owned
+  // entirely by `AttachmentPreviewGrid` now — nothing to cache or revoke
+  // here.
 
   function uploadAttachment(localId: string, file: File) {
-    uploadFile.mutateAsync(file).then(
+    uploadFileRequest(token!, file).then(
       (result) => {
         setAttachments((prev) =>
           prev.map((a) => (a.localId === localId ? { ...a, status: "done", result } : a)),
@@ -135,7 +111,6 @@ function FeedComposer() {
   }
 
   function removeAttachment(localId: string) {
-    revokeObjectUrl(localId);
     setAttachments((prev) => prev.filter((a) => a.localId !== localId));
   }
 
@@ -149,7 +124,6 @@ function FeedComposer() {
   }
 
   function clearAttachments() {
-    attachments.forEach((a) => revokeObjectUrl(a.localId));
     setAttachments([]);
   }
 
@@ -228,59 +202,11 @@ function FeedComposer() {
             placeholder="¿Qué avanzaste?"
             className="border border-rule rounded-lg bg-paper px-3 py-2.5 text-[13px] text-ink resize-none"
           />
-          {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {attachments.map((a) => (
-                <div
-                  key={a.localId}
-                  className={`relative flex items-center gap-1.5 border rounded-lg p-1.5 ${
-                    a.status === "error" ? "border-red-400 bg-red-50" : "border-rule bg-paper"
-                  }`}
-                >
-                  {isImageFile(a.file) ? (
-                    <img
-                      src={getObjectUrl(a)}
-                      alt={a.file.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-1 pr-5">
-                      <FilePdf size={16} className="text-ink-faint shrink-0" />
-                      <span className="text-[11px] text-ink-soft truncate max-w-[110px]">
-                        {a.file.name}
-                      </span>
-                    </div>
-                  )}
-                  {a.status === "uploading" && (
-                    <span
-                      role="status"
-                      aria-label={`Subiendo ${a.file.name}`}
-                      className="text-[10px] text-ink-faint px-1"
-                    >
-                      Subiendo…
-                    </span>
-                  )}
-                  {a.status === "error" && (
-                    <button
-                      type="button"
-                      onClick={() => retryAttachment(a.localId)}
-                      className="text-[10px] font-semibold text-red-600 underline px-1"
-                    >
-                      Reintentar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeAttachment(a.localId)}
-                    aria-label={`Quitar ${a.file.name}`}
-                    className="absolute -top-1.5 -right-1.5 bg-paper border border-rule rounded-full p-0.5 leading-none"
-                  >
-                    <X size={10} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <AttachmentPreviewGrid
+            attachments={attachments}
+            onRemove={removeAttachment}
+            onRetry={retryAttachment}
+          />
           <input
             type="url"
             value={evidenceUrl}

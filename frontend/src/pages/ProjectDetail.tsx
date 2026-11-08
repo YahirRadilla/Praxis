@@ -13,6 +13,7 @@ import ActivitiesTab from "../components/activities/ActivitiesTab";
 import ActivityDetailModal from "../components/activities/ActivityDetailModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FileDropzone from "../components/FileDropzone";
+import AttachmentPreviewGrid from "../components/evidence/AttachmentPreviewGrid";
 import { Lateral, LateralCard } from "../components/LayoutPrimitives";
 import type { ProjectPersonRef } from "../types/project";
 import type { DictamenVerdict } from "../types/dictamen";
@@ -43,7 +44,7 @@ import {
 import { useActivities } from "../hooks/useActivities";
 import { useProgressUpdates, useCreateProgressUpdate, useUploadFile } from "../hooks/useProgressUpdates";
 import { useDictamenes, useCreateDictamen } from "../hooks/useDictamenes";
-import { getErrorMessage } from "../services/api";
+import { getErrorMessage, uploadFileRequest } from "../services/api";
 import StatusPill from "../components/StatusPill";
 import {
   CARD_SHADOW,
@@ -55,7 +56,7 @@ import {
 } from "../utils/statusStyles";
 import { pluralize, timeAgo } from "../utils/text";
 import { avatarColorFor } from "../utils/avatarColor";
-import { CheckCircle, Circle, FileText, LinkSimple, Trash, WarningCircle, X } from "@phosphor-icons/react";
+import { CheckCircle, Circle, FileText, LinkSimple, Trash, WarningCircle } from "@phosphor-icons/react";
 
 type TabKey = "info" | "actividades" | "equipo" | "anexos";
 
@@ -95,7 +96,7 @@ function ProjectDetail() {
   const { id, activityId } = useParams();
   const projectId = Number(id);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
   const [tab, setTabState] = useState<TabKey>(isTabKey(initialTab) ? initialTab : "info");
@@ -439,20 +440,26 @@ function ProjectDetail() {
     );
   }
 
+  // Fires one independent `uploadFileRequest` per file instead of routing
+  // through `uploadFile`'s shared `useMutation()` instance: calling
+  // `.mutate()` again on that one observer before an earlier call settles
+  // detaches the earlier call's callbacks (see `@tanstack/query-core`'s
+  // `MutationObserver.mutate()`), so concurrent files got stuck on
+  // "Subiendo…" forever except the last one started.
   function uploadEvidenceAttachment(localId: string, file: File) {
-    uploadFile.mutate(file, {
-      onSuccess: (result) => {
+    uploadFileRequest(token!, file).then(
+      (result) => {
         setEvidenceAttachments((prev) =>
           prev.map((a) => (a.localId === localId ? { ...a, status: "done", result } : a)),
         );
       },
-      onError: (error) => {
+      (error) => {
         setEvidenceAttachments((prev) =>
           prev.map((a) => (a.localId === localId ? { ...a, status: "error" } : a)),
         );
         toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
       },
-    });
+    );
   }
 
   function handleEvidenceFilesSelected(files: File[]) {
@@ -841,41 +848,11 @@ function ProjectDetail() {
                             hint="Imágenes, video, PDF o Word · Máximo 10MB"
                             onFilesSelected={handleEvidenceFilesSelected}
                           />
-                          {evidenceAttachments.length > 0 && (
-                            <ul className="flex flex-col gap-1 list-none m-0 p-0">
-                              {evidenceAttachments.map((a) => (
-                                <li
-                                  key={a.localId}
-                                  className="flex items-center gap-2 text-[12px] text-ink-soft"
-                                >
-                                  <span className="flex-1 min-w-0 truncate">{a.file.name}</span>
-                                  {a.status === "uploading" && (
-                                    <span className="text-ink-faint shrink-0">Subiendo…</span>
-                                  )}
-                                  {a.status === "error" && (
-                                    <button
-                                      type="button"
-                                      onClick={() => retryEvidenceAttachment(a.localId)}
-                                      className="font-semibold text-red-600 underline shrink-0"
-                                    >
-                                      Reintentar
-                                    </button>
-                                  )}
-                                  {a.status === "done" && (
-                                    <span className="text-accent-primary font-semibold shrink-0">Listo</span>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeEvidenceAttachment(a.localId)}
-                                    aria-label={`Quitar ${a.file.name}`}
-                                    className="text-ink-faint hover:text-danger shrink-0"
-                                  >
-                                    <X size={12} />
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                          <AttachmentPreviewGrid
+                            attachments={evidenceAttachments}
+                            onRemove={removeEvidenceAttachment}
+                            onRetry={retryEvidenceAttachment}
+                          />
                         </div>
                       )}
                     </div>

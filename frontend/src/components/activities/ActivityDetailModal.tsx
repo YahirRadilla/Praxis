@@ -38,8 +38,7 @@ import {
   useUpdateChecklistItem,
   useUpdateChecklistSection,
 } from "../../hooks/useActivities";
-import { useUploadFile } from "../../hooks/useProgressUpdates";
-import { getErrorMessage } from "../../services/api";
+import { getErrorMessage, uploadFileRequest } from "../../services/api";
 import { ACTIVITY_PRIORITY, ACTIVITY_STATUS, CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
 import { avatarColorFor } from "../../utils/avatarColor";
 import AssigneeSelect from "./AssigneeSelect";
@@ -93,7 +92,7 @@ function ActivityDetailModal({
   archived,
   onClose,
 }: ActivityDetailModalProps) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { data: activity, isLoading, isError } = useActivityDetail(projectId, activityId);
   const updateActivity = useUpdateActivity(projectId, activityId);
   const deleteActivity = useDeleteActivity(projectId);
@@ -107,7 +106,6 @@ function ActivityDetailModal({
   const deleteComment = useDeleteActivityComment(projectId, activityId);
   const createAttachment = useCreateActivityAttachment(projectId, activityId);
   const deleteAttachment = useDeleteActivityAttachment(projectId, activityId);
-  const uploadFile = useUploadFile();
 
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
@@ -118,9 +116,10 @@ function ActivityDetailModal({
   const [addingItemFor, setAddingItemFor] = useState<number | "none" | null>(null);
   const [newItemText, setNewItemText] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  // Counts attachments whose upload+create chain hasn't settled yet — used
-  // instead of `uploadFile.isPending` because several files upload
-  // concurrently through the same mutation hook instance.
+  // Counts attachments whose upload+create chain hasn't settled yet —
+  // several files upload concurrently (each via its own `uploadFileRequest`
+  // call, not a shared mutation hook instance), so no single mutation's
+  // `isPending` reflects all of them.
   const [uploadingCount, setUploadingCount] = useState(0);
 
   useEffect(() => {
@@ -241,8 +240,13 @@ function ActivityDetailModal({
   function handleFilesSelected(files: File[]) {
     files.forEach((file) => {
       setUploadingCount((n) => n + 1);
-      uploadFile.mutate(file, {
-        onSuccess: (uploaded) =>
+      // Each file gets its own `uploadFileRequest` call instead of sharing
+      // one `useUploadFile()` mutation hook instance's `.mutate()` — see
+      // ProjectDetail.tsx's `uploadEvidenceAttachment` for why a shared
+      // instance drops earlier files' callbacks when several uploads are
+      // in flight at once.
+      uploadFileRequest(token!, file).then(
+        (uploaded) =>
           createAttachment.mutate(
             {
               url: uploaded.url,
@@ -256,11 +260,11 @@ function ActivityDetailModal({
               onSettled: () => setUploadingCount((n) => n - 1),
             },
           ),
-        onError: (error) => {
+        (error) => {
           toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
           setUploadingCount((n) => n - 1);
         },
-      });
+      );
     });
   }
 

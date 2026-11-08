@@ -138,6 +138,14 @@ function activityDetailFixture(overrides: Partial<ActivityDetail> = {}): Activit
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 function renderBoard(route = "/proyectos/5?tab=actividades") {
   return renderWithProviders(
     <Routes>
@@ -413,6 +421,77 @@ describe("ActivityDetailModal — checklist, comments, attachments", () => {
         fileName: "evidencia.pdf",
         mimeType: "application/pdf",
         sizeBytes: 2048,
+      }),
+    );
+  });
+});
+
+describe("ActivityDetailModal — concurrent attachment uploads (regression)", () => {
+  it("attaches two concurrently selected files independently, even when the second one's upload resolves first", async () => {
+    seedAuth({ accountType: "STUDENT", id: MEMBER.id });
+    vi.mocked(api.getProjectRequest).mockResolvedValue(
+      projectFixture({ viewer: viewerFixture({ isMember: true, canSeeBoard: true }) }),
+    );
+    vi.mocked(api.listActivitiesRequest).mockResolvedValue([activityFixture()]);
+    vi.mocked(api.getActivityDetailRequest).mockResolvedValue(activityDetailFixture());
+    vi.mocked(api.createActivityAttachmentRequest).mockImplementation(async (_token, _projectId, _activityId, payload) => ({
+      id: payload.fileName === "a.pdf" ? 1 : 2,
+      activityId: 10,
+      uploaderId: MEMBER.id,
+      url: payload.url,
+      fileName: payload.fileName,
+      mimeType: payload.mimeType,
+      sizeBytes: payload.sizeBytes,
+      createdAt: new Date().toISOString(),
+    }));
+
+    const defs = {
+      "a.pdf": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+      "b.pdf": deferred<{ url: string; fileName: string; mimeType: string; sizeBytes: number }>(),
+    };
+    vi.mocked(api.uploadFileRequest).mockImplementation((_token, file: File) =>
+      defs[file.name as keyof typeof defs].promise,
+    );
+
+    const user = userEvent.setup();
+    renderBoard("/proyectos/5/actividades/10?tab=actividades");
+
+    await screen.findByText("Sin adjuntos.");
+    const fileA = new File(["a"], "a.pdf", { type: "application/pdf" });
+    const fileB = new File(["b"], "b.pdf", { type: "application/pdf" });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, [fileA, fileB]);
+
+    await waitFor(() => expect(api.uploadFileRequest).toHaveBeenCalledTimes(2));
+
+    // Resolve the SECOND file's upload before the first one's.
+    defs["b.pdf"].resolve({
+      url: "https://files.example.com/b.pdf",
+      fileName: "b.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1,
+    });
+    await waitFor(() =>
+      expect(api.createActivityAttachmentRequest).toHaveBeenCalledWith("test-token", 5, 10, {
+        url: "https://files.example.com/b.pdf",
+        fileName: "b.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 1,
+      }),
+    );
+
+    defs["a.pdf"].resolve({
+      url: "https://files.example.com/a.pdf",
+      fileName: "a.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1,
+    });
+    await waitFor(() =>
+      expect(api.createActivityAttachmentRequest).toHaveBeenCalledWith("test-token", 5, 10, {
+        url: "https://files.example.com/a.pdf",
+        fileName: "a.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 1,
       }),
     );
   });

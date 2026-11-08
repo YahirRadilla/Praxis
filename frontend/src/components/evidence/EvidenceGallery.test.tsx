@@ -21,8 +21,11 @@ const image2 = makeEvidence({ id: 2, url: "https://cdn.example.com/img2.jpg", fi
 const image3 = makeEvidence({ id: 3, url: "https://cdn.example.com/img3.jpg", fileName: "img3.jpg" });
 const video = makeEvidence({ id: 4, url: "https://cdn.example.com/clip.mp4", fileName: "clip.mp4" });
 const link = makeEvidence({ id: 5, type: "LINK", url: "https://example.com", fileName: "Enlace externo" });
+const pdf = makeEvidence({ id: 6, url: "https://cdn.example.com/report.pdf", fileName: "report.pdf" });
+const otherFile = makeEvidence({ id: 7, url: "https://cdn.example.com/notas.txt", fileName: "notas.txt" });
 
 const evidence = [image1, image2, image3, video, link];
+const evidenceWithPdf = [...evidence, pdf, otherFile];
 
 describe("EvidenceGallery", () => {
   it("renders nothing when there is no evidence", () => {
@@ -86,5 +89,53 @@ describe("EvidenceGallery", () => {
     const anchor = screen.getByRole("link", { name: "Enlace externo" });
     expect(anchor).toHaveAttribute("href", link.url);
     expect(anchor).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders PDF evidence as a button, not an anchor", () => {
+    renderWithProviders(<EvidenceGallery evidence={evidenceWithPdf} />);
+
+    const pdfButton = screen.getByRole("button", { name: /report\.pdf/ });
+    expect(pdfButton.tagName).toBe("BUTTON");
+
+    const links = screen.getAllByRole("link");
+    expect(links.every((l) => l.getAttribute("href") !== pdf.url)).toBe(true);
+  });
+
+  it("opens a dialog with an iframe pointing at the PDF url when the PDF chip is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<EvidenceGallery evidence={evidenceWithPdf} />);
+
+    await user.click(screen.getByRole("button", { name: /report\.pdf/ }));
+
+    const dialog = screen.getByRole("dialog");
+    const iframe = within(dialog).getByTitle("report.pdf");
+    expect(iframe.tagName).toBe("IFRAME");
+    expect(iframe).toHaveAttribute("src", pdf.url);
+
+    const openInNewTab = within(dialog).getByRole("link", { name: "Abrir en pestaña nueva" });
+    expect(openInNewTab).toHaveAttribute("href", pdf.url);
+  });
+
+  it("closes the PDF dialog when the close button is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<EvidenceGallery evidence={evidenceWithPdf} />);
+
+    await user.click(screen.getByRole("button", { name: /report\.pdf/ }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps non-PDF files and links as anchors opening in a new tab (unchanged by this unit)", () => {
+    renderWithProviders(<EvidenceGallery evidence={evidenceWithPdf} />);
+
+    const fileAnchor = screen.getByRole("link", { name: /notas\.txt/ });
+    expect(fileAnchor).toHaveAttribute("href", otherFile.url);
+    expect(fileAnchor).toHaveAttribute("target", "_blank");
+
+    const linkAnchor = screen.getByRole("link", { name: "Enlace externo" });
+    expect(linkAnchor).toHaveAttribute("href", link.url);
+    expect(linkAnchor).toHaveAttribute("target", "_blank");
   });
 });

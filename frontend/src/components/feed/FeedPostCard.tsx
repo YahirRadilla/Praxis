@@ -4,6 +4,7 @@ import { CATEGORY_ICON_MAP } from "../../utils/categoryIcons";
 import { CARD_SHADOW } from "../../utils/statusStyles";
 import { timeAgo } from "../../utils/text";
 import { getChipTextColor } from "../../utils/chipTextColor";
+import { EvidenceGallery } from "../evidence/EvidenceGallery";
 
 function FeedPostCard({ update }: { update: FeedUpdate }) {
   const mainCategory = update.project.categories[0]?.category;
@@ -50,21 +51,7 @@ function FeedPostCard({ update }: { update: FeedUpdate }) {
 
       <p className="text-[13.5px] text-ink leading-relaxed m-0">{update.text}</p>
 
-      {update.evidence.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {update.evidence.map((ev) => (
-            <a
-              key={ev.id}
-              href={ev.url}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-paper border border-rule rounded-lg px-3 py-1.5 font-data text-[11px] text-ink-soft"
-            >
-              {ev.fileName ?? ev.url}
-            </a>
-          ))}
-        </div>
-      )}
+      <EvidenceGallery evidence={update.evidence} />
     </article>
   );
 }

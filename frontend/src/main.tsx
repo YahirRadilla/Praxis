@@ -26,7 +26,7 @@ createRoot(document.getElementById("root")!).render(
                 actionButton: "!bg-ink !text-paper !rounded-full",
                 cancelButton: "!bg-transparent !text-ink-soft",
                 closeButton: "!bg-paper-raised !border-rule !text-ink-soft",
-                error: "!border-red-200",
+                error: "!border-danger",
                 success: "!border-surface-accent",
               },
             }}

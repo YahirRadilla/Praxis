@@ -1,6 +1,7 @@
 import { CheckCircle } from "@phosphor-icons/react";
 import type { Category } from "../types/project";
 import { CATEGORY_ICON_MAP } from "../utils/categoryIcons";
+import { getChipTextColor } from "../utils/chipTextColor";
 
 const MAX_CATEGORIES = 3;
 
@@ -28,6 +29,7 @@ function CategoryPicker({ categories, value, onChange }: CategoryPickerProps) {
         const selected = value.includes(category.id);
         const disabled = !selected && atCap;
         const Icon = CATEGORY_ICON_MAP[category.icon];
+        const textColor = getChipTextColor(category.colorHex);
         return (
           <button
             key={category.id}
@@ -57,8 +59,11 @@ function CategoryPicker({ categories, value, onChange }: CategoryPickerProps) {
                   <CheckCircle size={18} weight="fill" color="var(--color-accent-primary)" />
                 </span>
               )}
-              {Icon && <Icon size={26} weight="bold" color="#FFFFFF" />}
-              <span className="text-[10.5px] font-bold text-white text-center leading-[1.2]">
+              {Icon && <Icon size={26} weight="bold" color={textColor} />}
+              <span
+                style={{ color: textColor }}
+                className="text-[10.5px] font-bold text-center leading-[1.2]"
+              >
                 {category.name}
               </span>
             </span>

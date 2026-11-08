@@ -1,6 +1,7 @@
 import { CheckCircle } from "@phosphor-icons/react";
 import type { Sdg } from "../types/project";
 import { SDG_ICONS } from "../utils/sdgIcons";
+import { getChipTextColor } from "../utils/chipTextColor";
 
 interface SdgPickerProps {
   sdgs: Sdg[];
@@ -22,6 +23,7 @@ function SdgPicker({ sdgs, value, onChange }: SdgPickerProps) {
       {sdgs.map((sdg) => {
         const selected = value.includes(sdg.id);
         const Icon = SDG_ICONS[sdg.id];
+        const textColor = getChipTextColor(sdg.colorHex);
         return (
           <button
             key={sdg.id}
@@ -40,7 +42,7 @@ function SdgPicker({ sdgs, value, onChange }: SdgPickerProps) {
               className="relative h-[100px] w-full flex flex-col items-center justify-center gap-1.5 px-2"
             >
               <span className="absolute top-1.5 left-1.5 bg-white/25 rounded-full w-5 h-5 flex items-center justify-center">
-                <span className="font-data text-[9px] font-bold text-white leading-none">
+                <span style={{ color: textColor }} className="font-data text-[9px] font-bold leading-none">
                   {String(sdg.id).padStart(2, "0")}
                 </span>
               </span>
@@ -49,8 +51,10 @@ function SdgPicker({ sdgs, value, onChange }: SdgPickerProps) {
                   <CheckCircle size={18} weight="fill" color="var(--color-accent-primary)" />
                 </span>
               )}
-              {Icon && <Icon size={26} weight="bold" color="#FFFFFF" />}
-              <span className="text-[10.5px] font-bold text-white text-center leading-[1.2]">{sdg.name}</span>
+              {Icon && <Icon size={26} weight="bold" color={textColor} />}
+              <span style={{ color: textColor }} className="text-[10.5px] font-bold text-center leading-[1.2]">
+                {sdg.name}
+              </span>
             </span>
           </button>
         );

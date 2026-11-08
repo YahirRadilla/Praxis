@@ -37,6 +37,55 @@
   --color-primary-hover: #234d30;
   --color-primary-hover-text: #fbfaf8;
 
+  /* Status/priority/verdict badge tokens, consumed by statusStyles.ts
+     (StatusPill/PriorityPill etc. read `.bg`/`.fg`, which hold
+     `var(--color-...)` references instead of fixed hex, so every badge in
+     the app now reacts to the theme toggle instead of staying a stray
+     light-mode pastel in dark mode). Light-mode values below are the
+     original, already-correct hex pairs from statusStyles.ts; see the dark
+     override for calibrated dark-mode pairs and their own contrast ratios. */
+  --color-status-public-bg: #eaf4ea;
+  --color-status-public-fg: #2d5e3a; /* 6.72:1 on this bg */
+  --color-status-private-bg: #f0efec;
+  --color-status-private-fg: #5a6069; /* 5.51:1 */
+  --color-status-archived-bg: #f0efec;
+  --color-status-archived-fg: #5f6670; /* 5.04:1 */
+  --color-status-verified-bg: #eaf4ea;
+  --color-status-verified-fg: #2d5e3a; /* 6.72:1 */
+
+  --color-activity-pending-bg: #f0efec;
+  --color-activity-pending-fg: #5a6069; /* 5.51:1 */
+  --color-activity-inprogress-bg: #e8f1f7;
+  --color-activity-inprogress-fg: #09608f; /* 5.96:1 */
+  --color-activity-tovalidate-bg: #e5f3ec;
+  --color-activity-tovalidate-fg: #19486a; /* 8.44:1 */
+  --color-activity-done-bg: #eaf4ea;
+  --color-activity-done-fg: #2d5e3a; /* 6.72:1 */
+  --color-activity-overdue-bg: #fbe9e7;
+  --color-activity-overdue-fg: #a21942; /* 6.50:1 */
+
+  --color-priority-low-bg: #f0efec;
+  --color-priority-low-fg: #5a6069; /* 5.51:1 */
+  --color-priority-medium-bg: #fdf3e0;
+  --color-priority-medium-fg: #7a581a; /* 5.89:1 */
+  --color-priority-high-bg: #fbe9e7;
+  --color-priority-high-fg: #a21942; /* 6.50:1 */
+
+  --color-verdict-approved-bg: #eaf4ea;
+  --color-verdict-approved-fg: #2d5e3a; /* 6.72:1 */
+  --color-verdict-changes-bg: #fdf3e0;
+  --color-verdict-changes-fg: #7a581a; /* 5.89:1 */
+
+  /* Fix 5: small badges inlined in individual components, same
+     bg/fg-with-no-dark-variant bug as the statusStyles.ts pairs above.
+     --color-badge-role-fg is also darkened from the previous bare
+     #3F7E44 (~4.35:1 on #EAF4EA — failed WCAG AA even in LIGHT mode) to
+     the same verified #2D5E3A used by the green status family above. */
+  --color-badge-validated-bg: #e8f1f7;
+  --color-badge-validated-fg: #00689d; /* 5.29:1 */
+  --color-badge-role-bg: #eaf4ea;
+  --color-badge-role-fg: #2d5e3a; /* 6.72:1 */
+
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 16px;
@@ -77,6 +126,50 @@
      green is the ~1.86:1 bug this token fixes. */
   --color-primary-hover: #234d30;
   --color-primary-hover-text: #edeef0;
+
+  /* Dark-mode calibration of the status/priority/verdict/badge pairs above:
+     same hue family as the light pair (green=positive, gray=neutral,
+     blue=in-progress, teal=to-validate, red=danger, amber=warning), but a
+     darkened/desaturated bg tinted toward this theme's paper-raised/
+     surface-ground instead of a light pastel, and a brighter/more saturated
+     fg — the same approach already used for --color-danger above. Every
+     pair clears WCAG AA (4.5:1) on its own bg; ratios noted per pair. */
+  --color-status-public-bg: #1c2e21;
+  --color-status-public-fg: #4bbf68; /* 6.12:1 */
+  --color-status-private-bg: #2a2d31;
+  --color-status-private-fg: #c4c8ce; /* 8.23:1 */
+  --color-status-archived-bg: #2a2d31;
+  --color-status-archived-fg: #aab0b8; /* 6.33:1 */
+  --color-status-verified-bg: #1c2e21;
+  --color-status-verified-fg: #4bbf68; /* 6.12:1 */
+
+  --color-activity-pending-bg: #2a2d31;
+  --color-activity-pending-fg: #c4c8ce; /* 8.23:1 */
+  --color-activity-inprogress-bg: #16293a;
+  --color-activity-inprogress-fg: #6ec3f0; /* 7.60:1 */
+  --color-activity-tovalidate-bg: #11291f;
+  --color-activity-tovalidate-fg: #4fd8c4; /* 8.78:1 */
+  --color-activity-done-bg: #1c2e21;
+  --color-activity-done-fg: #4bbf68; /* 6.12:1 */
+  --color-activity-overdue-bg: #3a1420;
+  --color-activity-overdue-fg: #e8647f; /* 5.04:1 */
+
+  --color-priority-low-bg: #2a2d31;
+  --color-priority-low-fg: #c4c8ce; /* 8.23:1 */
+  --color-priority-medium-bg: #2e2410;
+  --color-priority-medium-fg: #e3b34a; /* 7.86:1 */
+  --color-priority-high-bg: #3a1420;
+  --color-priority-high-fg: #e8647f; /* 5.04:1 */
+
+  --color-verdict-approved-bg: #1c2e21;
+  --color-verdict-approved-fg: #4bbf68; /* 6.12:1 */
+  --color-verdict-changes-bg: #2e2410;
+  --color-verdict-changes-fg: #e3b34a; /* 7.86:1 */
+
+  --color-badge-validated-bg: #16293a;
+  --color-badge-validated-fg: #6ec3f0; /* 7.60:1 */
+  --color-badge-role-bg: #1c2e21;
+  --color-badge-role-fg: #4bbf68; /* 6.12:1 */
 }
 
 body {

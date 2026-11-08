@@ -37,7 +37,7 @@ function ProgressUpdateCard({ update, casual = false }: ProgressUpdateCardProps)
         </div>
         {!casual && update.validated && (
           <span
-            style={{ backgroundColor: "#E8F1F7", color: "#00689D" }}
+            style={{ backgroundColor: "var(--color-badge-validated-bg)", color: "var(--color-badge-validated-fg)" }}
             className="rounded-full px-[11px] py-1.5 text-[11px] font-semibold shrink-0"
           >
             Validado

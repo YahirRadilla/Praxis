@@ -5,6 +5,7 @@ import { useCreateLabel, useLabels } from "../../hooks/useLabels";
 import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
 import { getErrorMessage } from "../../services/api";
 import { CARD_SHADOW } from "../../utils/statusStyles";
+import { getChipTextColor } from "../../utils/chipTextColor";
 import { pluralize } from "../../utils/text";
 import FieldValidationHint from "../FieldValidationHint";
 
@@ -76,7 +77,7 @@ function LabelPicker({ projectId, value, onChange, disabled }: LabelPickerProps)
         {selected.map((l) => (
           <span
             key={l.id}
-            style={{ backgroundColor: `${l.colorHex}22`, color: l.colorHex }}
+            style={{ backgroundColor: l.colorHex, color: getChipTextColor(l.colorHex) }}
             className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
           >
             {l.name}

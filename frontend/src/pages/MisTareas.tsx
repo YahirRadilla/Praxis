@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { useMyActivities } from "../hooks/useActivities";
 import { formatDate } from "../components/activities/ActivityCard";
 import PriorityPill from "../components/activities/PriorityPill";
 import StatusPill from "../components/StatusPill";
 import Skeleton from "../components/Skeleton";
 import { ACTIVITY_STATUS, CARD_SHADOW } from "../utils/statusStyles";
+import { getChipTextColor } from "../utils/chipTextColor";
 import type { ActivityStatus, MyActivity } from "../types/activity";
 
 function TaskRowSkeleton() {
@@ -126,8 +128,8 @@ function MisTareas() {
                           <span
                             key={link.labelId}
                             style={{
-                              backgroundColor: `${link.label.colorHex}22`,
-                              color: link.label.colorHex,
+                              backgroundColor: link.label.colorHex,
+                              color: getChipTextColor(link.label.colorHex),
                             }}
                             className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap"
                           >
@@ -154,6 +156,8 @@ function MisTareas() {
           </section>
         ))}
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -30,7 +30,7 @@ function TeamMemberRow({ member, onRemove }: TeamMemberRowProps) {
         )}
       </div>
       <span
-        style={{ color: "#3F7E44", backgroundColor: "#EAF4EA" }}
+        style={{ color: "var(--color-badge-role-fg)", backgroundColor: "var(--color-badge-role-bg)" }}
         className="rounded-full px-[11px] py-[5px] text-[11px] font-semibold shrink-0"
       >
         {ROLE_LABELS[member.role] ?? member.role}

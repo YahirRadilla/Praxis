@@ -123,7 +123,7 @@ function AttachmentPreviewGrid({ attachments, onRemove, onRetry }: AttachmentPre
               tabIndex={clickable ? 0 : undefined}
               aria-label={clickable ? `Ver vista previa de ${attachment.file.name}` : undefined}
               className={`relative w-20 h-20 shrink-0 rounded-lg border bg-paper overflow-hidden ${
-                attachment.status === "error" ? "border-red-400" : "border-rule"
+                attachment.status === "error" ? "border-danger" : "border-rule"
               } ${clickable ? "cursor-pointer" : ""}`}
             >
               {isImageFile(attachment.file) ? (
@@ -157,7 +157,7 @@ function AttachmentPreviewGrid({ attachments, onRemove, onRetry }: AttachmentPre
               )}
 
               {attachment.status === "error" && (
-                <div className="absolute inset-0 bg-red-600/55 flex items-center justify-center">
+                <div className="absolute inset-0 bg-danger-bg/55 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={(e) => {

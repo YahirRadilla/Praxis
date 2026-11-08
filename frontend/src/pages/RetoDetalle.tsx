@@ -1,8 +1,10 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import ProjectRow from "../components/ProjectRow";
 import { useChallenge } from "../hooks/useChallenges";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import { getChipTextColor } from "../utils/chipTextColor";
 
 function RetoDetalle() {
   const { id } = useParams();
@@ -65,8 +67,8 @@ function RetoDetalle() {
               {challenge.sdgs.map(({ sdg }) => (
                 <span
                   key={sdg.id}
-                  style={{ backgroundColor: sdg.colorHex }}
-                  className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
+                  style={{ backgroundColor: sdg.colorHex, color: getChipTextColor(sdg.colorHex) }}
+                  className="rounded-full px-3 py-1.5 text-[11px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
                 >
                   ODS {String(sdg.id).padStart(2, "0")} · {sdg.name}
                 </span>
@@ -135,6 +137,8 @@ function RetoDetalle() {
           </div>
         </aside>
       </div>
+
+      <Footer />
     </div>
   );
 }

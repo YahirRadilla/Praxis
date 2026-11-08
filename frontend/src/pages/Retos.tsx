@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SdgMultiSelect from "../components/SdgMultiSelect";
 import CategoryMultiSelect from "../components/CategoryMultiSelect";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +9,7 @@ import { useChallenges } from "../hooks/useChallenges";
 import { useSdgs } from "../hooks/useSdgs";
 import { useCategories } from "../hooks/useCategories";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import { getChipTextColor } from "../utils/chipTextColor";
 import { pluralize } from "../utils/text";
 import { CHALLENGE_CREATOR_TYPES } from "../utils/challengeCreators";
 
@@ -93,8 +95,8 @@ function Retos() {
                   {challenge.sdgs.map(({ sdg }) => (
                     <span
                       key={sdg.id}
-                      style={{ backgroundColor: sdg.colorHex }}
-                      className="rounded-full px-2.5 py-1 text-[10px] font-bold text-white font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+                      style={{ backgroundColor: sdg.colorHex, color: getChipTextColor(sdg.colorHex) }}
+                      className="rounded-full px-2.5 py-1 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
                     >
                       ODS {String(sdg.id).padStart(2, "0")}
                     </span>
@@ -124,6 +126,8 @@ function Retos() {
           })}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

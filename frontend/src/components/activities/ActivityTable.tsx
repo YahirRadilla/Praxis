@@ -8,6 +8,7 @@ import PriorityPill from "./PriorityPill";
 import ActivityCardMenu from "./ActivityCardMenu";
 import { formatDate } from "./ActivityCard";
 import { ACTIVITY_STATUS } from "../../utils/statusStyles";
+import { getChipTextColor } from "../../utils/chipTextColor";
 
 const STATUS_ORDER: ActivityStatus[] = ["PENDING", "IN_PROGRESS", "TO_VALIDATE", "DONE"];
 const PRIORITY_ORDER: ActivityPriority[] = ["BAJA", "MEDIA", "ALTA"];
@@ -140,7 +141,7 @@ function ActivityTable({ projectId, activities, isProjectOwner, readOnly }: Acti
                     {activity.labels.map((link) => (
                       <span
                         key={link.labelId}
-                        style={{ backgroundColor: `${link.label.colorHex}22`, color: link.label.colorHex }}
+                        style={{ backgroundColor: link.label.colorHex, color: getChipTextColor(link.label.colorHex) }}
                         className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap"
                       >
                         {link.label.name}

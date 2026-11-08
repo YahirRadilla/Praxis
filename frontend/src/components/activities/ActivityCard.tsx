@@ -8,6 +8,7 @@ import AvatarStack from "../AvatarStack";
 import PriorityPill from "./PriorityPill";
 import ActivityCardMenu from "./ActivityCardMenu";
 import { ACTIVITY_STATUS, CARD_SHADOW } from "../../utils/statusStyles";
+import { getChipTextColor } from "../../utils/chipTextColor";
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
@@ -52,7 +53,7 @@ export function ActivityCardView({
           {activity.labels.map((link) => (
             <span
               key={link.labelId}
-              style={{ backgroundColor: `${link.label.colorHex}22`, color: link.label.colorHex }}
+              style={{ backgroundColor: link.label.colorHex, color: getChipTextColor(link.label.colorHex) }}
               className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
             >
               {link.label.name}

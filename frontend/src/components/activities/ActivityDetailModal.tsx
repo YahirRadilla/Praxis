@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import {
@@ -22,6 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import DatePicker from "../DatePicker";
 import ConfirmDialog from "../ConfirmDialog";
 import Skeleton from "../Skeleton";
+import FileDropzone from "../FileDropzone";
 import {
   useActivityDetail,
   useCreateActivityAttachment,
@@ -117,6 +118,10 @@ function ActivityDetailModal({
   const [addingItemFor, setAddingItemFor] = useState<number | "none" | null>(null);
   const [newItemText, setNewItemText] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  // Counts attachments whose upload+create chain hasn't settled yet — used
+  // instead of `uploadFile.isPending` because several files upload
+  // concurrently through the same mutation hook instance.
+  const [uploadingCount, setUploadingCount] = useState(0);
 
   useEffect(() => {
     if (!activity) return;
@@ -233,23 +238,30 @@ function ActivityDetailModal({
     );
   }
 
-  function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    uploadFile.mutate(file, {
-      onSuccess: (uploaded) =>
-        createAttachment.mutate(
-          {
-            url: uploaded.url,
-            fileName: uploaded.fileName,
-            mimeType: uploaded.mimeType,
-            sizeBytes: uploaded.sizeBytes,
-          },
-          { onError: (error) => toast.error(getErrorMessage(error, "No se pudo adjuntar el archivo.")) },
-        ),
-      onError: (error) => toast.error(getErrorMessage(error, "No se pudo subir el archivo.")),
+  function handleFilesSelected(files: File[]) {
+    files.forEach((file) => {
+      setUploadingCount((n) => n + 1);
+      uploadFile.mutate(file, {
+        onSuccess: (uploaded) =>
+          createAttachment.mutate(
+            {
+              url: uploaded.url,
+              fileName: uploaded.fileName,
+              mimeType: uploaded.mimeType,
+              sizeBytes: uploaded.sizeBytes,
+            },
+            {
+              onError: (error) =>
+                toast.error(getErrorMessage(error, `No se pudo adjuntar "${file.name}".`)),
+              onSettled: () => setUploadingCount((n) => n - 1),
+            },
+          ),
+        onError: (error) => {
+          toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
+          setUploadingCount((n) => n - 1);
+        },
+      });
     });
-    e.target.value = "";
   }
 
   const checklistTotal =
@@ -499,22 +511,17 @@ function ActivityDetailModal({
 
                   {/* Attachments */}
                   <section className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-[11.5px] font-semibold text-ink-faint uppercase m-0 flex items-center gap-1.5">
-                        <Paperclip size={13} /> Adjuntos
-                      </h3>
-                      {!readOnly && (
-                        <label className="text-[12px] font-semibold text-accent-primary cursor-pointer">
-                          {uploadFile.isPending ? "Subiendo…" : "Subir archivo"}
-                          <input
-                            type="file"
-                            onChange={handleFileSelected}
-                            disabled={uploadFile.isPending}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
+                    <h3 className="text-[11.5px] font-semibold text-ink-faint uppercase m-0 flex items-center gap-1.5">
+                      <Paperclip size={13} /> Adjuntos
+                    </h3>
+                    {!readOnly && (
+                      <FileDropzone
+                        multiple
+                        hint="Cualquier tipo de archivo · Máximo 10MB"
+                        onFilesSelected={handleFilesSelected}
+                        disabled={uploadingCount > 0}
+                      />
+                    )}
                     {activity.attachments.length === 0 && (
                       <p className="text-[12.5px] text-ink-faint m-0">Sin adjuntos.</p>
                     )}

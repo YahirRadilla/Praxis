@@ -1,7 +1,8 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import ProjectHeaderBand from "../components/ProjectHeaderBand";
 import ProgressUpdateCard from "../components/ProgressUpdateCard";
 import TeamMemberRow from "../components/team/TeamMemberRow";
@@ -11,6 +12,7 @@ import AvatarStack from "../components/AvatarStack";
 import ActivitiesTab from "../components/activities/ActivitiesTab";
 import ActivityDetailModal from "../components/activities/ActivityDetailModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import FileDropzone from "../components/FileDropzone";
 import { Lateral, LateralCard } from "../components/LayoutPrimitives";
 import type { ProjectPersonRef } from "../types/project";
 import type { DictamenVerdict } from "../types/dictamen";
@@ -53,7 +55,7 @@ import {
 } from "../utils/statusStyles";
 import { pluralize, timeAgo } from "../utils/text";
 import { avatarColorFor } from "../utils/avatarColor";
-import { CheckCircle, Circle, FileText, LinkSimple, Trash, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircle, Circle, FileText, LinkSimple, Trash, WarningCircle, X } from "@phosphor-icons/react";
 
 type TabKey = "info" | "actividades" | "equipo" | "anexos";
 
@@ -72,6 +74,21 @@ function formatResourceSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Mirrors FeedComposer's upload-immediately-on-pick pattern at a smaller
+// scope: no thumbnail grid, just a filename + per-file status.
+type EvidenceAttachment = {
+  localId: string;
+  file: File;
+  status: "uploading" | "done" | "error";
+  result?: { url: string; fileName: string };
+};
+
+let evidenceLocalIdSeq = 0;
+function nextEvidenceLocalId(): string {
+  evidenceLocalIdSeq += 1;
+  return `evidence-attachment-${evidenceLocalIdSeq}`;
 }
 
 function ProjectDetail() {
@@ -123,7 +140,7 @@ function ProjectDetail() {
   const [progressText, setProgressText] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceMode, setEvidenceMode] = useState<"link" | "file">("link");
-  const [uploadedFile, setUploadedFile] = useState<{ url: string; fileName: string } | null>(null);
+  const [evidenceAttachments, setEvidenceAttachments] = useState<EvidenceAttachment[]>([]);
   const [showProgressForm, setShowProgressForm] = useState(false);
   const [inviteUser, setInviteUser] = useState<ProjectPersonRef | null>(null);
   const [teacherInviteUser, setTeacherInviteUser] = useState<ProjectPersonRef | null>(null);
@@ -394,22 +411,26 @@ function ProjectDetail() {
 
   function handleCreateProgressUpdate(e: FormEvent) {
     e.preventDefault();
+    const fileEvidence = evidenceAttachments
+      .filter((a): a is EvidenceAttachment & { result: NonNullable<EvidenceAttachment["result"]> } =>
+        a.status === "done" && !!a.result,
+      )
+      .map((a) => ({ type: "FILE" as const, url: a.result.url, fileName: a.result.fileName }));
+    const linkEvidence = evidenceUrl ? [{ type: "LINK" as const, url: evidenceUrl }] : [];
+    const evidence = [...fileEvidence, ...linkEvidence];
+
     createProgressUpdate.mutate(
       {
         text: progressText,
         postedToFeed: true,
-        evidence: uploadedFile
-          ? [{ type: "FILE", url: uploadedFile.url, fileName: uploadedFile.fileName }]
-          : evidenceUrl
-            ? [{ type: "LINK", url: evidenceUrl }]
-            : undefined,
+        evidence: evidence.length > 0 ? evidence : undefined,
       },
       {
         onSuccess: () => {
           toast.success("Publicado");
           setProgressText("");
           setEvidenceUrl("");
-          setUploadedFile(null);
+          setEvidenceAttachments([]);
           setEvidenceMode("link");
           setShowProgressForm(false);
         },
@@ -418,17 +439,43 @@ function ProjectDetail() {
     );
   }
 
-  function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function uploadEvidenceAttachment(localId: string, file: File) {
     uploadFile.mutate(file, {
-      onSuccess: (data) => setUploadedFile(data),
+      onSuccess: (result) => {
+        setEvidenceAttachments((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "done", result } : a)),
+        );
+      },
       onError: (error) => {
-        toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
-        setUploadedFile(null);
-        e.target.value = "";
+        setEvidenceAttachments((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "error" } : a)),
+        );
+        toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
       },
     });
+  }
+
+  function handleEvidenceFilesSelected(files: File[]) {
+    const accepted = files.map((file) => ({
+      localId: nextEvidenceLocalId(),
+      file,
+      status: "uploading" as const,
+    }));
+    setEvidenceAttachments((prev) => [...prev, ...accepted]);
+    accepted.forEach((a) => uploadEvidenceAttachment(a.localId, a.file));
+  }
+
+  function removeEvidenceAttachment(localId: string) {
+    setEvidenceAttachments((prev) => prev.filter((a) => a.localId !== localId));
+  }
+
+  function retryEvidenceAttachment(localId: string) {
+    const attachment = evidenceAttachments.find((a) => a.localId === localId);
+    if (!attachment) return;
+    setEvidenceAttachments((prev) =>
+      prev.map((a) => (a.localId === localId ? { ...a, status: "uploading" } : a)),
+    );
+    uploadEvidenceAttachment(localId, attachment.file);
   }
 
   function handleCreateDictamen(e: FormEvent) {
@@ -468,15 +515,12 @@ function ProjectDetail() {
     );
   }
 
-  function handleResourceFileSelected(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleResourceFileSelected(file: File) {
     uploadFile.mutate(file, {
       onSuccess: (data) => setResourceFile(data),
       onError: (error) => {
         toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
         setResourceFile(null);
-        e.target.value = "";
       },
     });
   }
@@ -790,27 +834,57 @@ function ProjectDetail() {
                           className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
                         />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="file"
+                        <div className="flex flex-col gap-2">
+                          <FileDropzone
+                            multiple
                             accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,video/mp4"
-                            onChange={handleFileSelected}
-                            className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                            hint="Imágenes, video, PDF o Word · Máximo 10MB"
+                            onFilesSelected={handleEvidenceFilesSelected}
                           />
-                          {uploadFile.isPending && (
-                            <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
-                          )}
-                          {uploadedFile && !uploadFile.isPending && (
-                            <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
-                              {uploadedFile.fileName}
-                            </span>
+                          {evidenceAttachments.length > 0 && (
+                            <ul className="flex flex-col gap-1 list-none m-0 p-0">
+                              {evidenceAttachments.map((a) => (
+                                <li
+                                  key={a.localId}
+                                  className="flex items-center gap-2 text-[12px] text-ink-soft"
+                                >
+                                  <span className="flex-1 min-w-0 truncate">{a.file.name}</span>
+                                  {a.status === "uploading" && (
+                                    <span className="text-ink-faint shrink-0">Subiendo…</span>
+                                  )}
+                                  {a.status === "error" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => retryEvidenceAttachment(a.localId)}
+                                      className="font-semibold text-red-600 underline shrink-0"
+                                    >
+                                      Reintentar
+                                    </button>
+                                  )}
+                                  {a.status === "done" && (
+                                    <span className="text-accent-primary font-semibold shrink-0">Listo</span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeEvidenceAttachment(a.localId)}
+                                    aria-label={`Quitar ${a.file.name}`}
+                                    className="text-ink-faint hover:text-danger shrink-0"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                       )}
                     </div>
                     <button
                       type="submit"
-                      disabled={createProgressUpdate.isPending || uploadFile.isPending}
+                      disabled={
+                        createProgressUpdate.isPending ||
+                        evidenceAttachments.some((a) => a.status === "uploading")
+                      }
                       className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
                     >
                       {createProgressUpdate.isPending ? "Guardando…" : "Publicar"}
@@ -1218,11 +1292,11 @@ function ProjectDetail() {
                         className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
                       />
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="file"
-                          onChange={handleResourceFileSelected}
-                          className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                      <div className="flex flex-col gap-2">
+                        <FileDropzone
+                          hint="Cualquier tipo de archivo · Máximo 10MB"
+                          onFilesSelected={(files) => handleResourceFileSelected(files[0])}
+                          disabled={uploadFile.isPending}
                         />
                         {uploadFile.isPending && (
                           <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
@@ -1353,6 +1427,8 @@ function ProjectDetail() {
         onConfirm={handleRemoveTeamMember}
         onClose={() => setRemoveTarget(null)}
       />
+
+      <Footer />
     </div>
   );
 }

@@ -1,10 +1,12 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { FileText, LinkSimple, Trash } from "@phosphor-icons/react";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import ProjectRow from "../components/ProjectRow";
 import ConfirmDialog from "../components/ConfirmDialog";
+import FileDropzone from "../components/FileDropzone";
 import { useAuth } from "../context/AuthContext";
 import {
   useAddClassGroupResource,
@@ -131,15 +133,12 @@ function GrupoClaseDetalle() {
     );
   }
 
-  function handleResourceFileSelected(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleResourceFileSelected(file: File) {
     uploadFile.mutate(file, {
       onSuccess: (data) => setResourceFile(data),
       onError: (error) => {
         toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
         setResourceFile(null);
-        e.target.value = "";
       },
     });
   }
@@ -374,11 +373,11 @@ function GrupoClaseDetalle() {
                           className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
                         />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="file"
-                            onChange={handleResourceFileSelected}
-                            className="flex-1 border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
+                        <div className="flex flex-col gap-2">
+                          <FileDropzone
+                            hint="Cualquier tipo de archivo · Máximo 10MB"
+                            onFilesSelected={(files) => handleResourceFileSelected(files[0])}
+                            disabled={uploadFile.isPending}
                           />
                           {uploadFile.isPending && (
                             <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
@@ -550,6 +549,8 @@ function GrupoClaseDetalle() {
         onConfirm={handleRemoveMember}
         onClose={() => setRemoveTarget(null)}
       />
+
+      <Footer />
     </div>
   );
 }

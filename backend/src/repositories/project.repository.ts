@@ -167,6 +167,28 @@ export function listProjectsForUser(userId: number) {
   });
 }
 
+/**
+ * "Involved in" rule for a user's public projects: owner OR an accepted
+ * MEMBER-purpose TeamRequest. A confirmed EVALUATOR link (teacherId/
+ * organizationId) is excluded — that's an evaluator role, not authorship
+ * (see `isProjectMember`'s "accepted EVALUATOR row is not team membership").
+ * Archived projects are included, matching public search's "archived stays
+ * discoverable" rule (P1).
+ */
+export function listPublicProjectsForUser(userId: number) {
+  return prisma.project.findMany({
+    where: {
+      visibility: "PUBLIC",
+      OR: [
+        { ownerId: userId },
+        { teamRequests: { some: { userId, status: "ACCEPTED", purpose: "MEMBER" } } },
+      ],
+    },
+    include: projectInclude,
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
 export function searchProjects(filters: SearchProjectsFilters) {
   // Public search includes archived projects (P1: archived stays discoverable,
   // like an archived GitHub repo) — it only filters by visibility.

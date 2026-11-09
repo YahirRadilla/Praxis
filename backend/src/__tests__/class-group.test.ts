@@ -218,6 +218,7 @@ describe("GET /api/class-groups/:id: visibility tiers", () => {
       name: privateProject.body.name,
       visibility: "PRIVATE",
       archived: false,
+      bannerUrl: null,
     });
     expect(res.body.members).toHaveLength(1);
     expect(res.body.members[0].user.email).toBe(member.user.email);

@@ -5,6 +5,7 @@ import {
   findProjectById,
   findProjectByIdWithEmail,
   listProjectsForUser,
+  listPublicProjectsForUser,
   searchProjects as searchProjectsRepo,
   updateProject as updateProjectRepo,
   type CreateProjectData,
@@ -339,6 +340,16 @@ export async function getProject(id: number, requesterId?: number) {
 
 export async function searchProjects(query: SearchProjectsQuery) {
   return searchProjectsRepo(query);
+}
+
+/** Public profile's "projects" tab — see `listPublicProjectsForUser` for the
+ * "involved in" rule. A non-positive-integer `userId` can't match any row,
+ * so it returns an empty list instead of letting Prisma 500. */
+export async function listPublicProjectsOfUser(userId: number) {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return [];
+  }
+  return listPublicProjectsForUser(userId);
 }
 
 export async function listMyProjects(userId: number) {

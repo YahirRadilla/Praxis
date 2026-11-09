@@ -45,7 +45,7 @@ export interface ListFeedFilters {
   categoryId?: number;
 }
 
-export function listFeedUpdates(filters: ListFeedFilters = {}) {
+export function listFeedUpdates(filters: ListFeedFilters = {}, viewerId?: number) {
   return prisma.progressUpdate.findMany({
     where: {
       postedToFeed: true,
@@ -67,8 +67,23 @@ export function listFeedUpdates(filters: ListFeedFilters = {}) {
           categories: { include: { category: true } },
         },
       },
+      _count: { select: { likes: true } },
+      likes: { where: { userId: viewerId ?? -1 }, select: { userId: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
+  });
+}
+
+/**
+ * Same visibility rule as `listFeedUpdates` (postedToFeed + public, non-archived
+ * project), but for a single update by id — used by the like/unlike flow to
+ * 404 on a post that doesn't exist, isn't on the feed, or belongs to a
+ * private/archived project, without leaking which case it was.
+ */
+export function findFeedVisibleUpdate(id: number) {
+  return prisma.progressUpdate.findFirst({
+    where: { id, postedToFeed: true, project: { visibility: "PUBLIC", archived: false } },
+    select: { id: true, authorId: true, projectId: true, project: { select: { name: true } } },
   });
 }

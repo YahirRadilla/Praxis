@@ -210,7 +210,13 @@ describe("Bug fix: challenges' public endpoints don't leak private project field
     const res = await request(app).get(`/api/challenges/${challenge.body.id}`);
     expect(res.status).toBe(200);
     expect(res.body.projects).toEqual([
-      { id: publicProject.body.id, name: publicProject.body.name, visibility: "PUBLIC", archived: false },
+      {
+        id: publicProject.body.id,
+        name: publicProject.body.name,
+        visibility: "PUBLIC",
+        archived: false,
+        bannerUrl: null,
+      },
     ]);
   });
 
@@ -245,7 +251,13 @@ describe("Bug fix: challenges' public endpoints don't leak private project field
     expect(res.status).toBe(200);
     const found = res.body.find((c: any) => c.id === challenge.body.id);
     expect(found.projects).toEqual([
-      { id: publicProject.body.id, name: publicProject.body.name, visibility: "PUBLIC", archived: false },
+      {
+        id: publicProject.body.id,
+        name: publicProject.body.name,
+        visibility: "PUBLIC",
+        archived: false,
+        bannerUrl: null,
+      },
     ]);
   });
 });

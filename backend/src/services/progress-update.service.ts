@@ -47,6 +47,11 @@ export async function listProgressUpdates(projectId: number, requesterId?: numbe
   return listProgressUpdatesByProject(projectId);
 }
 
-export async function listFeed(categoryId?: number) {
-  return listFeedUpdates({ categoryId });
+export async function listFeed(categoryId?: number, viewerId?: number) {
+  const updates = await listFeedUpdates({ categoryId }, viewerId);
+  return updates.map(({ likes, _count, ...rest }) => ({
+    ...rest,
+    likeCount: _count.likes,
+    likedByMe: likes.length > 0,
+  }));
 }

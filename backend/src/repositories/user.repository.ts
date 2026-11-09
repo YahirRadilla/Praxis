@@ -25,10 +25,39 @@ export interface UpdateUserData {
   skills?: string[];
   interests?: string[];
   academicProgram?: string;
+  semester?: number | null;
+  cvUrl?: string | null;
 }
 
 export function updateUser(id: number, data: UpdateUserData) {
   return prisma.user.update({ where: { id }, data });
+}
+
+/**
+ * Public profile lookup — NEVER reuse `toPublicUser()` or any full-record
+ * select here: this is reachable anonymously (optionalAuth), and the
+ * email-never-exposed rule for a public profile is stricter than the
+ * "own profile" shape (`toPublicUser` only strips `passwordHash`, not
+ * `email`). Explicit `select` keeps it that way regardless of future User
+ * fields.
+ */
+export function findPublicProfileById(id: number) {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      accountType: true,
+      academicProgram: true,
+      semester: true,
+      skills: true,
+      interests: true,
+      cvUrl: true,
+      verified: true,
+      createdAt: true,
+      _count: { select: { followers: true, following: true } },
+    },
+  });
 }
 
 export function markUserVerified(id: number) {

@@ -8,6 +8,7 @@ import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
 import { getErrorMessage } from "../../services/api";
 import { ACTIVITY_STATUS, CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
 import AssigneeSelect from "./AssigneeSelect";
+import PriorityPicker from "./PriorityPicker";
 import DatePicker from "../DatePicker";
 import FieldValidationHint from "../FieldValidationHint";
 
@@ -17,9 +18,6 @@ interface CreateActivityFormProps {
   initialStatus: ActivityStatus;
   onDone: () => void;
 }
-
-const PRIORITY_OPTIONS: ActivityPriority[] = ["BAJA", "MEDIA", "ALTA"];
-const PRIORITY_LABELS: Record<ActivityPriority, string> = { BAJA: "Baja", MEDIA: "Media", ALTA: "Alta" };
 
 function CreateActivityForm({ projectId, team, initialStatus, onDone }: CreateActivityFormProps) {
   const createActivity = useCreateActivity(projectId);
@@ -95,18 +93,7 @@ function CreateActivityForm({ projectId, team, initialStatus, onDone }: CreateAc
         <FieldValidationHint message={hintMessage} show={isHintVisible("title")} />
       </div>
       <DatePicker value={dueDate} onChange={setDueDate} required aria-label="Fecha límite" className="text-[12.5px]" />
-      <select
-        value={priority}
-        onChange={(e) => setPriority(e.target.value as ActivityPriority)}
-        aria-label="Prioridad"
-        className="border border-rule rounded-lg bg-paper px-3 py-2 text-[12.5px] text-ink"
-      >
-        {PRIORITY_OPTIONS.map((p) => (
-          <option key={p} value={p}>
-            {PRIORITY_LABELS[p]}
-          </option>
-        ))}
-      </select>
+      <PriorityPicker value={priority} onChange={setPriority} />
       <AssigneeSelect team={team} value={assigneeIds} onChange={setAssigneeIds} />
       <button
         type="submit"

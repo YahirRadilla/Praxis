@@ -164,6 +164,7 @@ describe("ProjectDetail — owner tier", () => {
     expect(await screen.findByRole("button", { name: "Editar proyecto" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Hacer privado" }));
+    await user.click(screen.getByRole("button", { name: "Hacer privado" }));
     await waitFor(() =>
       expect(api.updateProjectRequest).toHaveBeenCalledWith("test-token", 5, { visibility: "PRIVATE" }),
     );

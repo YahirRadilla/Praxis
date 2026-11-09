@@ -6,8 +6,12 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProjectRow from "../components/ProjectRow";
 import ConfirmDialog from "../components/ConfirmDialog";
+import BannerUploader from "../components/BannerUploader";
 import FileDropzone from "../components/FileDropzone";
 import FieldValidationHint from "../components/FieldValidationHint";
+import AttachmentPreviewGrid from "../components/evidence/AttachmentPreviewGrid";
+import ImageLightbox from "../components/evidence/ImageLightbox";
+import PdfViewerDialog from "../components/evidence/PdfViewerDialog";
 import { useAuth } from "../context/AuthContext";
 import {
   useAddClassGroupResource,
@@ -19,10 +23,11 @@ import {
   useRemoveClassGroupMember,
   useUpdateClassGroup,
 } from "../hooks/useClassGroups";
-import { useUploadFile } from "../hooks/useProgressUpdates";
 import { useRequiredFieldHint } from "../hooks/useRequiredFieldHint";
-import { getErrorMessage } from "../services/api";
-import { classGroupCounts } from "../utils/classGroup";
+import { getErrorMessage, uploadFileRequest } from "../services/api";
+import type { Evidence } from "../types/activity";
+import { classGroupCounts, CLASS_GROUP_BAND_COLOR } from "../utils/classGroup";
+import { isPreviewableImage, isPreviewablePdf, toPreviewEvidence } from "../utils/mimePreview";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 import { pluralize } from "../utils/text";
 
@@ -36,17 +41,33 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX");
 }
 
+// Same concurrency-safe pattern as ProjectDetail.tsx's EvidenceAttachment: each
+// file gets its own direct `uploadFileRequest` call instead of sharing one
+// `useUploadFile()` mutation hook instance, so concurrent uploads don't drop
+// earlier files' callbacks.
+type ResourceAttachment = {
+  localId: string;
+  file: File;
+  status: "uploading" | "done" | "error";
+  result?: { url: string; fileName: string; mimeType: string; sizeBytes: number };
+};
+
+let resourceLocalIdSeq = 0;
+function nextResourceLocalId(): string {
+  resourceLocalIdSeq += 1;
+  return `resource-attachment-${resourceLocalIdSeq}`;
+}
+
 function GrupoClaseDetalle() {
   const { id } = useParams();
   const classGroupId = Number(id);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
 
   const { data: classGroup, isLoading, isError, refetch } = useClassGroup(classGroupId);
   const updateClassGroup = useUpdateClassGroup(classGroupId);
   const createResource = useAddClassGroupResource(classGroupId);
   const deleteResource = useDeleteClassGroupResource(classGroupId);
-  const uploadFile = useUploadFile();
   const joinClassGroup = useJoinClassGroup(classGroupId);
   const leaveClassGroup = useLeaveClassGroup(classGroupId);
   const removeMember = useRemoveClassGroupMember(classGroupId);
@@ -61,12 +82,9 @@ function GrupoClaseDetalle() {
   const [resourceLabel, setResourceLabel] = useState("");
   const [resourceDescription, setResourceDescription] = useState("");
   const [resourceUrl, setResourceUrl] = useState("");
-  const [resourceFile, setResourceFile] = useState<{
-    url: string;
-    fileName: string;
-    mimeType: string;
-    sizeBytes: number;
-  } | null>(null);
+  const [resourceFiles, setResourceFiles] = useState<ResourceAttachment[]>([]);
+  const [resourceLightboxIndex, setResourceLightboxIndex] = useState<number | null>(null);
+  const [resourcePdfPreview, setResourcePdfPreview] = useState<Evidence | null>(null);
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ userId: number; name: string } | null>(null);
@@ -115,6 +133,9 @@ function GrupoClaseDetalle() {
   }
 
   const counts = classGroupCounts(classGroup);
+  const imageResources = (classGroup.resources ?? []).filter(
+    (r) => r.type === "FILE" && isPreviewableImage(r.mimeType),
+  );
 
   function handleStartEdit() {
     setEditName(classGroup!.name);
@@ -143,53 +164,118 @@ function GrupoClaseDetalle() {
     );
   }
 
-  function handleResourceFileSelected(file: File) {
-    uploadFile.mutate(file, {
-      onSuccess: (data) => setResourceFile(data),
-      onError: (error) => {
-        toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
-        setResourceFile(null);
+  function uploadResourceFile(localId: string, file: File) {
+    uploadFileRequest(token!, file).then(
+      (result) => {
+        setResourceFiles((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "done", result } : a)),
+        );
       },
-    });
+      (error) => {
+        setResourceFiles((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "error" } : a)),
+        );
+        toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
+      },
+    );
+  }
+
+  function handleResourceFilesSelected(files: File[]) {
+    const accepted = files.map((file) => ({
+      localId: nextResourceLocalId(),
+      file,
+      status: "uploading" as const,
+    }));
+    setResourceFiles((prev) => [...prev, ...accepted]);
+    accepted.forEach((a) => uploadResourceFile(a.localId, a.file));
+  }
+
+  function removeResourceFile(localId: string) {
+    setResourceFiles((prev) => prev.filter((a) => a.localId !== localId));
+  }
+
+  function retryResourceFile(localId: string) {
+    const attachment = resourceFiles.find((a) => a.localId === localId);
+    if (!attachment) return;
+    setResourceFiles((prev) =>
+      prev.map((a) => (a.localId === localId ? { ...a, status: "uploading" } : a)),
+    );
+    uploadResourceFile(localId, attachment.file);
   }
 
   function handleAddResource(e: FormEvent) {
     e.preventDefault();
-    const requiredFields = [{ key: "resourceLabel", value: resourceLabel }];
-    if (resourceMode === "link") requiredFields.push({ key: "resourceUrl", value: resourceUrl });
-    if (!validateRequired(requiredFields)) return;
-    if (resourceMode === "file" && !resourceFile) return;
+    const doneFiles = resourceFiles.filter((a) => a.status === "done" && a.result);
+    if (resourceMode === "link") {
+      if (
+        !validateRequired([
+          { key: "resourceLabel", value: resourceLabel },
+          { key: "resourceUrl", value: resourceUrl },
+        ])
+      )
+        return;
+    } else if (doneFiles.length === 0) {
+      return;
+    }
 
-    const payload =
-      resourceMode === "file" && resourceFile
-        ? {
-            type: "FILE" as const,
-            url: resourceFile.url,
-            fileName: resourceFile.fileName,
-            mimeType: resourceFile.mimeType,
-            sizeBytes: resourceFile.sizeBytes,
-            label: resourceLabel.trim(),
-            description: resourceDescription.trim() || undefined,
-          }
-        : {
-            type: "LINK" as const,
-            url: resourceUrl.trim(),
-            label: resourceLabel.trim(),
-            description: resourceDescription.trim() || undefined,
-          };
-
-    createResource.mutate(payload, {
-      onSuccess: () => {
-        toast.success("Documento agregado");
+    if (resourceMode === "file") {
+      const requests = doneFiles.map((a) => {
+        const label =
+          doneFiles.length === 1
+            ? resourceLabel.trim() || a.result!.fileName
+            : resourceLabel.trim()
+              ? `${resourceLabel.trim()} — ${a.result!.fileName}`
+              : a.result!.fileName;
+        return new Promise<void>((resolve) => {
+          createResource.mutate(
+            {
+              type: "FILE",
+              url: a.result!.url,
+              fileName: a.result!.fileName,
+              mimeType: a.result!.mimeType,
+              sizeBytes: a.result!.sizeBytes,
+              label,
+              description: resourceDescription.trim() || undefined,
+            },
+            {
+              onError: (error) => toast.error(getErrorMessage(error, `No se pudo agregar "${a.result!.fileName}".`)),
+              onSettled: () => resolve(),
+            },
+          );
+        });
+      });
+      Promise.all(requests).then(() => {
+        toast.success(doneFiles.length > 1 ? "Documentos agregados" : "Documento agregado");
         setResourceLabel("");
         setResourceDescription("");
         setResourceUrl("");
-        setResourceFile(null);
+        setResourceFiles([]);
         setResourceMode("link");
         setShowAddResourceForm(false);
+      });
+      return;
+    }
+
+    createResource.mutate(
+      {
+        type: "LINK",
+        url: resourceUrl.trim(),
+        label: resourceLabel.trim(),
+        description: resourceDescription.trim() || undefined,
       },
-      onError: (error) => toast.error(getErrorMessage(error, "No se pudo agregar el documento.")),
-    });
+      {
+        onSuccess: () => {
+          toast.success("Documento agregado");
+          setResourceLabel("");
+          setResourceDescription("");
+          setResourceUrl("");
+          setResourceFiles([]);
+          setResourceMode("link");
+          setShowAddResourceForm(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "No se pudo agregar el documento.")),
+      },
+    );
   }
 
   function handleDeleteResource(resourceId: number) {
@@ -230,7 +316,26 @@ function GrupoClaseDetalle() {
     <div className="min-h-dvh flex flex-col bg-surface-ground">
       <Navbar />
 
-      <div className="flex-1 flex gap-8 px-8 py-7 items-start max-w-[1100px] mx-auto w-full">
+      <div className="px-4 md:px-8 pt-6 max-w-[1100px] mx-auto w-full">
+        <div
+          style={{ background: `linear-gradient(135deg, ${CLASS_GROUP_BAND_COLOR}, ${CLASS_GROUP_BAND_COLOR}CC)` }}
+          className="relative rounded-2xl overflow-hidden h-[180px] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_20px_44px_-20px_rgba(20,22,26,0.35)]"
+        >
+          {classGroup.bannerUrl && (
+            <img src={classGroup.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          {isOwner && (
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+              <BannerUploader
+                hasBanner={!!classGroup.bannerUrl}
+                onSave={(bannerUrl) => updateClassGroup.mutateAsync({ bannerUrl })}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col md:flex-row gap-8 px-4 md:px-8 py-7 items-stretch md:items-start max-w-[1100px] mx-auto w-full">
         <section className="flex-1 min-w-0 flex flex-col gap-6">
           <div className={`bg-paper-raised border border-rule rounded-xl p-6 flex flex-col gap-4 ${CARD_SHADOW}`}>
             {showEditForm ? (
@@ -408,18 +513,15 @@ function GrupoClaseDetalle() {
                       ) : (
                         <div className="flex flex-col gap-2">
                           <FileDropzone
+                            multiple
                             hint="Cualquier tipo de archivo · Máximo 10MB"
-                            onFilesSelected={(files) => handleResourceFileSelected(files[0])}
-                            disabled={uploadFile.isPending}
+                            onFilesSelected={handleResourceFilesSelected}
                           />
-                          {uploadFile.isPending && (
-                            <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
-                          )}
-                          {resourceFile && !uploadFile.isPending && (
-                            <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
-                              {resourceFile.fileName}
-                            </span>
-                          )}
+                          <AttachmentPreviewGrid
+                            attachments={resourceFiles}
+                            onRemove={removeResourceFile}
+                            onRetry={retryResourceFile}
+                          />
                         </div>
                       )}
                     </div>
@@ -427,8 +529,8 @@ function GrupoClaseDetalle() {
                       type="submit"
                       disabled={
                         createResource.isPending ||
-                        uploadFile.isPending ||
-                        (resourceMode === "file" && !resourceFile)
+                        resourceFiles.some((a) => a.status === "uploading") ||
+                        (resourceMode === "file" && resourceFiles.filter((a) => a.status === "done").length === 0)
                       }
                       className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
                     >
@@ -451,17 +553,43 @@ function GrupoClaseDetalle() {
                       ) : (
                         <LinkSimple size={18} className="text-ink-faint shrink-0" />
                       )}
-                      <a
-                        href={resource.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 min-w-0 hover:underline"
-                      >
-                        <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
-                        {resource.description && (
-                          <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
-                        )}
-                      </a>
+                      {resource.type === "FILE" && isPreviewableImage(resource.mimeType) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setResourceLightboxIndex(imageResources.findIndex((r) => r.id === resource.id))
+                          }
+                          className="flex-1 min-w-0 text-left hover:underline"
+                        >
+                          <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                          {resource.description && (
+                            <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                          )}
+                        </button>
+                      ) : resource.type === "FILE" && isPreviewablePdf(resource.mimeType) ? (
+                        <button
+                          type="button"
+                          onClick={() => setResourcePdfPreview(toPreviewEvidence(resource))}
+                          className="flex-1 min-w-0 text-left hover:underline"
+                        >
+                          <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                          {resource.description && (
+                            <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                          )}
+                        </button>
+                      ) : (
+                        <a
+                          href={resource.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 min-w-0 hover:underline"
+                        >
+                          <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                          {resource.description && (
+                            <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                          )}
+                        </a>
+                      )}
                       {resource.sizeBytes != null && (
                         <span className="text-[11px] text-ink-faint shrink-0">
                           {formatResourceSize(resource.sizeBytes)}
@@ -552,7 +680,7 @@ function GrupoClaseDetalle() {
           )}
         </section>
 
-        <aside className="w-[260px] shrink-0 flex flex-col gap-5">
+        <aside className="w-full md:w-[260px] md:shrink-0 flex flex-col gap-5">
           <div className={`bg-paper-raised border border-rule rounded-xl p-4 flex flex-col gap-3 ${CARD_SHADOW}`}>
             <h3 className="text-[12.5px] font-semibold text-ink m-0">Docente</h3>
             <p className="text-[13px] font-semibold text-ink m-0">{classGroup.teacher.name}</p>
@@ -582,6 +710,14 @@ function GrupoClaseDetalle() {
         onConfirm={handleRemoveMember}
         onClose={() => setRemoveTarget(null)}
       />
+
+      <ImageLightbox
+        images={imageResources.map(toPreviewEvidence)}
+        index={resourceLightboxIndex}
+        onClose={() => setResourceLightboxIndex(null)}
+        onIndexChange={setResourceLightboxIndex}
+      />
+      <PdfViewerDialog pdf={resourcePdfPreview} onClose={() => setResourcePdfPreview(null)} />
 
       <Footer />
     </div>

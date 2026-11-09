@@ -16,7 +16,7 @@ import {
   Trash,
   X,
 } from "@phosphor-icons/react";
-import type { ActivityPriority, ChecklistItem, ChecklistSection } from "../../types/activity";
+import type { ChecklistItem, ChecklistSection, Evidence } from "../../types/activity";
 import type { TeamMember } from "../../types/team";
 import { useAuth } from "../../context/AuthContext";
 import DatePicker from "../DatePicker";
@@ -24,7 +24,10 @@ import ConfirmDialog from "../ConfirmDialog";
 import Skeleton from "../Skeleton";
 import FileDropzone from "../FileDropzone";
 import FieldValidationHint from "../FieldValidationHint";
+import ImageLightbox from "../evidence/ImageLightbox";
+import PdfViewerDialog from "../evidence/PdfViewerDialog";
 import { useRequiredFieldHint } from "../../hooks/useRequiredFieldHint";
+import { isPreviewableImage, isPreviewablePdf, toPreviewEvidence } from "../../utils/mimePreview";
 import {
   useActivityDetail,
   useCreateActivityAttachment,
@@ -41,12 +44,11 @@ import {
   useUpdateChecklistSection,
 } from "../../hooks/useActivities";
 import { getErrorMessage, uploadFileRequest } from "../../services/api";
-import { ACTIVITY_PRIORITY, ACTIVITY_STATUS, CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
+import { ACTIVITY_STATUS, CARD_SHADOW, PRIMARY_BUTTON } from "../../utils/statusStyles";
 import { avatarColorFor } from "../../utils/avatarColor";
 import AssigneeSelect from "./AssigneeSelect";
 import LabelPicker from "./LabelPicker";
-
-const PRIORITY_OPTIONS: ActivityPriority[] = ["BAJA", "MEDIA", "ALTA"];
+import PriorityPicker from "./PriorityPicker";
 
 type DeleteTarget =
   | { kind: "activity" }
@@ -124,6 +126,8 @@ function ActivityDetailModal({
   // call, not a shared mutation hook instance), so no single mutation's
   // `isPending` reflects all of them.
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<Evidence | null>(null);
 
   useEffect(() => {
     if (!activity) return;
@@ -278,6 +282,8 @@ function ActivityDetailModal({
     (activity?.checklistItems.filter((i) => i.done).length ?? 0) +
     (activity?.checklistSections.reduce((sum, s) => sum + s.items.filter((i) => i.done).length, 0) ?? 0);
 
+  const imageAttachments = activity?.attachments.filter((a) => isPreviewableImage(a.mimeType)) ?? [];
+
   return (
     <>
     <Dialog open onClose={handleClose} transition className="relative z-50">
@@ -285,7 +291,7 @@ function ActivityDetailModal({
         transition
         className="fixed inset-0 bg-ink/40 transition-opacity duration-150 motion-reduce:transition-none data-closed:opacity-0"
       />
-      <div className="fixed inset-0 overflow-y-auto">
+      <div className="fixed inset-0 overflow-y-auto scroll-thin">
         <div className="flex min-h-full items-center justify-center p-4">
           <DialogPanel
             transition
@@ -358,20 +364,11 @@ function ActivityDetailModal({
                       >
                         {ACTIVITY_STATUS[activity.status]?.label ?? activity.status}
                       </span>
-                      <select
+                      <PriorityPicker
                         value={activity.priority}
-                        onChange={(e) => commit({ priority: e.target.value as ActivityPriority })}
+                        onChange={(priority) => commit({ priority })}
                         disabled={readOnly}
-                        aria-label="Prioridad"
-                        style={{ color: ACTIVITY_PRIORITY[activity.priority]?.fg }}
-                        className="border border-rule rounded-full bg-paper px-2.5 py-1 text-[11px] font-semibold disabled:opacity-70"
-                      >
-                        {PRIORITY_OPTIONS.map((p) => (
-                          <option key={p} value={p}>
-                            {ACTIVITY_PRIORITY[p]?.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
                   <button
@@ -385,7 +382,7 @@ function ActivityDetailModal({
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto scroll-thin p-5 flex flex-col gap-6">
                   {/* Description */}
                   <section className="flex flex-col gap-1.5">
                     <h3 className="text-[11.5px] font-semibold text-ink-faint uppercase m-0">Descripción</h3>
@@ -554,14 +551,34 @@ function ActivityDetailModal({
                           className="flex items-center gap-2 border border-rule rounded-lg px-3 py-2"
                         >
                           <AttachmentIcon mimeType={att.mimeType} />
-                          <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex-1 min-w-0 text-[12.5px] text-ink font-medium truncate hover:underline"
-                          >
-                            {att.fileName}
-                          </a>
+                          {isPreviewableImage(att.mimeType) ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLightboxIndex(imageAttachments.findIndex((a) => a.id === att.id))
+                              }
+                              className="flex-1 min-w-0 text-left text-[12.5px] text-ink font-medium truncate hover:underline"
+                            >
+                              {att.fileName}
+                            </button>
+                          ) : isPreviewablePdf(att.mimeType) ? (
+                            <button
+                              type="button"
+                              onClick={() => setPdfPreview(toPreviewEvidence(att))}
+                              className="flex-1 min-w-0 text-left text-[12.5px] text-ink font-medium truncate hover:underline"
+                            >
+                              {att.fileName}
+                            </button>
+                          ) : (
+                            <a
+                              href={att.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex-1 min-w-0 text-[12.5px] text-ink font-medium truncate hover:underline"
+                            >
+                              {att.fileName}
+                            </a>
+                          )}
                           <span className="text-[11px] text-ink-faint shrink-0">{formatSize(att.sizeBytes)}</span>
                           <a href={att.url} target="_blank" rel="noreferrer" className="text-ink-faint hover:text-ink shrink-0">
                             <DownloadSimple size={14} />
@@ -723,6 +740,13 @@ function ActivityDetailModal({
       onConfirm={handleConfirmDelete}
       onClose={() => setDeleteTarget(null)}
     />
+    <ImageLightbox
+      images={imageAttachments.map(toPreviewEvidence)}
+      index={lightboxIndex}
+      onClose={() => setLightboxIndex(null)}
+      onIndexChange={setLightboxIndex}
+    />
+    <PdfViewerDialog pdf={pdfPreview} onClose={() => setPdfPreview(null)} />
     </>
   );
 }

@@ -15,6 +15,7 @@ vi.mock("../services/api", async () => {
     listNotificationsRequest: vi.fn(),
     markNotificationReadRequest: vi.fn(),
     markAllNotificationsReadRequest: vi.fn(),
+    getMessagesUnreadCountRequest: vi.fn(),
   };
 });
 
@@ -47,6 +48,9 @@ beforeEach(() => {
   vi.mocked(api.listNotificationsRequest).mockReset();
   vi.mocked(api.markNotificationReadRequest).mockReset().mockResolvedValue(undefined);
   vi.mocked(api.markAllNotificationsReadRequest).mockReset().mockResolvedValue(undefined);
+  vi.mocked(api.getMessagesUnreadCountRequest)
+    .mockReset()
+    .mockResolvedValue({ count: 0, pendingRequests: 0 });
 });
 
 describe("Navbar — unread badge", () => {

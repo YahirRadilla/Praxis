@@ -7,6 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import { CARD_SHADOW } from "../utils/statusStyles";
 import { avatarColorFor } from "../utils/avatarColor";
 import NotificationBell from "./NotificationBell";
+import MessagesButton from "./MessagesButton";
 
 function Navbar() {
   const { user, isAuthenticated, clearAuth } = useAuth();
@@ -103,6 +104,7 @@ function Navbar() {
               Mis tareas
             </NavLink>
           )}
+          {isAuthenticated && <MessagesButton />}
           {isAuthenticated && <NotificationBell />}
           {isAuthenticated && user ? (
             <div className="relative" ref={menuRef}>
@@ -126,12 +128,12 @@ function Navbar() {
                   </div>
 
                   <Link
-                    to="/perfil"
+                    to={`/usuarios/${user.id}`}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink hover:bg-surface-ground"
                   >
                     <UserCircle size={17} />
-                    Editar perfil
+                    Ver perfil
                   </Link>
 
                   <button
@@ -184,6 +186,7 @@ function Navbar() {
             <MagnifyingGlass size={19} />
           </button>
 
+          {isAuthenticated && <MessagesButton />}
           {isAuthenticated && <NotificationBell />}
 
           <Menu as="div" className="relative">
@@ -238,11 +241,11 @@ function Navbar() {
                 <>
                   <MenuItem>
                     <Link
-                      to="/perfil"
+                      to={`/usuarios/${user.id}`}
                       className="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-ink data-[focus]:bg-surface-ground"
                     >
                       <UserCircle size={17} />
-                      Editar perfil
+                      Ver perfil
                     </Link>
                   </MenuItem>
                   <MenuItem>

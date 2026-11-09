@@ -4,6 +4,8 @@
 !.gitignore
 !README.md
 !docker-compose.yml
+!render.yaml
+!.github/
 
 node_modules/
 dist/

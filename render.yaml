@@ -36,11 +36,8 @@ services:
     staticPublishPath: ./dist
     autoDeployTrigger: commit
     envVars:
-      # Update this if the backend service ends up at a different
-      # *.onrender.com subdomain than expected (check its URL in the
-      # Render dashboard after the first deploy).
       - key: VITE_API_URL
-        value: https://praxis-backend.onrender.com
+        value: https://praxis-backend-abtc.onrender.com
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
     routes:

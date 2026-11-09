@@ -75,6 +75,16 @@ enum NotificationType {
   TEAM_INVITE_RECEIVED
   ACTIVITY_ASSIGNED
   DICTAMEN_SUBMITTED
+  POST_LIKED
+  NEW_FOLLOWER
+  MESSAGE_REQUEST_RECEIVED
+  MESSAGE_REQUEST_ACCEPTED
+}
+
+enum ConversationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 model User {
@@ -86,6 +96,8 @@ model User {
   skills          String[]
   interests       String[]
   academicProgram String?
+  semester        Int?
+  cvUrl           String?
   verified        Boolean     @default(false)
   verifiedAt      DateTime?
   createdAt       DateTime    @default(now())
@@ -110,6 +122,15 @@ model User {
   projectResources        ProjectResource[]
   classGroupResources     ClassGroupResource[]
   classGroupMemberships   ClassGroupMember[]
+
+  postLikes  PostLike[]
+  followers  Follow[] @relation("FollowFollowing")
+  following  Follow[] @relation("FollowFollower")
+
+  conversationsAsA     Conversation[] @relation("ConversationUserA")
+  conversationsAsB     Conversation[] @relation("ConversationUserB")
+  conversationsStarted Conversation[] @relation("ConversationInitiator")
+  sentMessages         Message[]      @relation("MessageSender")
 
   @@map("users")
 }
@@ -371,6 +392,7 @@ model ProgressUpdate {
   activity Activity?  @relation(fields: [activityId], references: [id])
   author   User       @relation(fields: [authorId], references: [id])
   evidence Evidence[]
+  likes    PostLike[]
 
   @@map("progress_updates")
 }
@@ -386,6 +408,34 @@ model SavedProject {
 
   @@unique([userId, projectId])
   @@map("saved_projects")
+}
+
+model PostLike {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  progressUpdateId Int
+  createdAt        DateTime @default(now())
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progressUpdate ProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, progressUpdateId])
+  @@index([progressUpdateId])
+  @@map("post_likes")
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("FollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
 }
 
 model Evidence {
@@ -551,6 +601,43 @@ model ProjectResource {
   creator User    @relation(fields: [creatorId], references: [id])
 
   @@map("project_resources")
+}
+
+model Conversation {
+  id            Int                @id @default(autoincrement())
+  userAId       Int // always the lower user id
+  userBId       Int // always the higher user id
+  initiatorId   Int // who sent the first message; the other participant is the "recipient"
+  status        ConversationStatus @default(PENDING)
+  createdAt     DateTime           @default(now())
+  resolvedAt    DateTime?
+  lastMessageAt DateTime           @default(now())
+
+  userA     User      @relation("ConversationUserA", fields: [userAId], references: [id])
+  userB     User      @relation("ConversationUserB", fields: [userBId], references: [id])
+  initiator User      @relation("ConversationInitiator", fields: [initiatorId], references: [id])
+  messages  Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+  @@map("conversations")
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  text           String
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, read])
+  @@map("messages")
 }
 
 model Notification {

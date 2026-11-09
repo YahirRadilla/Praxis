@@ -86,7 +86,7 @@ function ActivitiesTab({
       <>
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <Skeleton height={28} width={140} shape="circle" />
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto scroll-thin pb-2">
             {Array.from({ length: SKELETON_COLUMN_COUNT }).map((_, i) => (
               <BoardColumnSkeleton key={i} />
             ))}

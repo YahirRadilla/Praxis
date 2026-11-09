@@ -67,7 +67,7 @@ function UserPicker({ accountType, label, placeholder, value, onChange }: UserPi
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+4px)] w-full max-h-[320px] overflow-y-auto bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
+          className={`absolute left-0 top-[calc(100%+4px)] w-full max-h-[320px] overflow-y-auto scroll-thin bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
         >
           <div className="px-2.5 pb-2">
             <input

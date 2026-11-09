@@ -13,7 +13,7 @@ function FeedPostCard({ update }: { update: FeedUpdate }) {
 
   return (
     <article className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-4 ${CARD_SHADOW}`}>
-      <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <span className="w-9 h-9 rounded-full bg-surface-accent flex items-center justify-center text-[13px] font-bold text-ink shrink-0">
           {update.author.name.charAt(0).toUpperCase()}
         </span>
@@ -27,7 +27,7 @@ function FeedPostCard({ update }: { update: FeedUpdate }) {
           </p>
         </div>
         {(mainCategory || mainSdg) && (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto pl-[46px] sm:pl-0">
             {mainCategory && (
               <span
                 style={{ backgroundColor: mainCategory.colorHex, color: getChipTextColor(mainCategory.colorHex) }}

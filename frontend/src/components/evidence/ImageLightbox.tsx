@@ -41,7 +41,7 @@ function ImageLightbox({ images, index, onClose, onIndexChange }: ImageLightboxP
         transition
         className="fixed inset-0 bg-ink/40 transition-opacity duration-150 motion-reduce:transition-none data-closed:opacity-0"
       />
-      <div className="fixed inset-0 overflow-y-auto">
+      <div className="fixed inset-0 overflow-y-auto scroll-thin">
         <div className="flex min-h-full items-center justify-center p-4">
           <DialogPanel
             transition

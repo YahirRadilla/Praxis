@@ -73,7 +73,7 @@ export function EvidenceGallery({ evidence }: { evidence: Evidence[] }) {
   return (
     <div className="flex flex-col gap-2">
       {images.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory">
+        <div className="flex gap-2 overflow-x-auto scroll-thin snap-x snap-mandatory">
           {images.map((ev, i) => (
             <button
               key={ev.id}

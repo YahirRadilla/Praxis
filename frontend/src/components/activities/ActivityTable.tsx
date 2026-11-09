@@ -76,7 +76,7 @@ function ActivityTable({ projectId, activities, isProjectOwner, readOnly }: Acti
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto scroll-thin">
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-rule">

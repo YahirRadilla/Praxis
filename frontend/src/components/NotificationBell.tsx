@@ -52,7 +52,7 @@ function NotificationBell({ className }: NotificationBellProps) {
 
       <MenuItems
         anchor="bottom end"
-        className={`z-50 w-[320px] max-h-[420px] overflow-y-auto bg-paper-raised border border-rule rounded-xl py-2 focus:outline-none ${CARD_SHADOW}`}
+        className={`z-50 w-[320px] max-h-[420px] overflow-y-auto scroll-thin bg-paper-raised border border-rule rounded-xl py-2 focus:outline-none ${CARD_SHADOW}`}
       >
         <div className="flex items-center justify-between px-3.5 py-1.5">
           <span className="text-[12px] font-semibold text-ink">Notificaciones</span>

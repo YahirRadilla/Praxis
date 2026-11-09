@@ -55,7 +55,7 @@ function CategoryMultiSelect({ categories, value, onChange }: CategoryMultiSelec
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+8px)] w-[300px] max-h-[360px] overflow-y-auto bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
+          className={`absolute left-0 top-[calc(100%+8px)] w-[300px] max-h-[360px] overflow-y-auto scroll-thin bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
         >
           <div className="flex items-center justify-between px-3.5 py-1.5 mb-1">
             <span className="text-[11.5px] font-semibold text-ink-faint uppercase">Filtrar por categoría</span>

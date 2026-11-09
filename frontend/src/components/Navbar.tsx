@@ -68,7 +68,7 @@ function Navbar() {
         </Link>
 
         <form onSubmit={handleSearch} className="hidden md:block flex-1 max-w-[420px]">
-          <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5">
+          <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5 focus-within:border-accent-primary focus-within:ring-2 focus-within:ring-accent-primary/30">
             <svg width="16" height="16" viewBox="0 0 256 256" fill="none" className="text-ink-faint shrink-0">
               <circle cx="112" cy="112" r="80" stroke="currentColor" strokeWidth="16" />
               <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
@@ -78,7 +78,8 @@ function Navbar() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar proyectos"
-              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-faint outline-none"
+              style={{ outline: "none" }}
+              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-faint"
             />
           </div>
         </form>
@@ -298,7 +299,7 @@ function Navbar() {
           onSubmit={handleMobileSearch}
           className="md:hidden w-full bg-paper-raised border-b border-rule px-4 py-2.5"
         >
-          <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5">
+          <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5 focus-within:border-accent-primary focus-within:ring-2 focus-within:ring-accent-primary/30">
             <svg width="16" height="16" viewBox="0 0 256 256" fill="none" className="text-ink-faint shrink-0">
               <circle cx="112" cy="112" r="80" stroke="currentColor" strokeWidth="16" />
               <line x1="168" y1="168" x2="224" y2="224" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
@@ -309,7 +310,8 @@ function Navbar() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar proyectos"
-              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-faint outline-none"
+              style={{ outline: "none" }}
+              className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink-faint"
             />
           </div>
         </form>

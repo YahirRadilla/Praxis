@@ -1,7 +1,6 @@
 import { CheckCircle } from "@phosphor-icons/react";
 import type { Category } from "../types/project";
 import { CATEGORY_ICON_MAP } from "../utils/categoryIcons";
-import { getChipTextColor } from "../utils/chipTextColor";
 
 const MAX_CATEGORIES = 3;
 
@@ -29,7 +28,6 @@ function CategoryPicker({ categories, value, onChange }: CategoryPickerProps) {
         const selected = value.includes(category.id);
         const disabled = !selected && atCap;
         const Icon = CATEGORY_ICON_MAP[category.icon];
-        const textColor = getChipTextColor(category.colorHex);
         return (
           <button
             key={category.id}
@@ -54,16 +52,18 @@ function CategoryPicker({ categories, value, onChange }: CategoryPickerProps) {
               style={{ backgroundColor: category.colorHex }}
               className="relative h-[100px] w-full flex flex-col items-center justify-center gap-1.5 px-2"
             >
+              {/* Fixed dark scrim (not a theme token — darkens the raw
+                  colorHex consistently in both themes) so white text/icons
+                  read at WCAG AA on every category color, instead of
+                  flipping text black/white per-tile by luminance. */}
+              <span className="absolute inset-0 bg-black/50" />
               {selected && (
                 <span className="absolute top-1 right-1 bg-paper-raised rounded-full flex items-center justify-center">
                   <CheckCircle size={18} weight="fill" color="var(--color-accent-primary)" />
                 </span>
               )}
-              {Icon && <Icon size={26} weight="bold" color={textColor} />}
-              <span
-                style={{ color: textColor }}
-                className="text-[10.5px] font-bold text-center leading-[1.2]"
-              >
+              {Icon && <Icon size={26} weight="bold" className="relative text-white" />}
+              <span className="relative text-[10.5px] font-bold text-center leading-[1.2] text-white">
                 {category.name}
               </span>
             </span>

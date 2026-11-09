@@ -21,6 +21,7 @@ createRoot(document.getElementById("root")!).render(
             toastOptions={{
               classNames: {
                 toast: "!bg-paper-raised !border !border-rule !rounded-xl !shadow-sm",
+                icon: "!text-ink",
                 title: "!text-ink !text-[13.5px] !font-semibold !font-body",
                 description: "!text-ink-soft !text-[12.5px] !font-body",
                 actionButton: "!bg-ink !text-paper !rounded-full",

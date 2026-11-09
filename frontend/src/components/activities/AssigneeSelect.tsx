@@ -61,7 +61,7 @@ function AssigneeSelect({ team, value, onChange }: AssigneeSelectProps) {
 
       {open && (
         <div
-          className={`absolute left-0 top-[calc(100%+8px)] w-[240px] max-h-[280px] overflow-y-auto bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
+          className={`absolute left-0 top-[calc(100%+8px)] w-[240px] max-h-[280px] overflow-y-auto scroll-thin bg-paper-raised border border-rule rounded-xl py-2 z-50 ${CARD_SHADOW}`}
         >
           {team.length === 0 && (
             <p className="text-[12px] text-ink-faint px-3.5 py-2 m-0">Sin integrantes en el equipo.</p>

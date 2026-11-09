@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import ProfileSidebarCard from "../components/feed/ProfileSidebarCard";
 import SidebarNav from "../components/feed/SidebarNav";
 import SidebarSdgFilter from "../components/feed/SidebarSdgFilter";
@@ -24,7 +25,9 @@ function Inicio() {
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 px-4 md:px-8 py-7 items-stretch md:items-start max-w-[1200px] mx-auto w-full">
         <aside className="w-full md:w-[260px] md:shrink-0 flex flex-col gap-4">
-          <ProfileSidebarCard />
+          <div className="hidden md:block">
+            <ProfileSidebarCard />
+          </div>
           <SidebarNav />
           <SidebarCategoryFilter value={categoryId} onChange={setCategoryId} />
           <SidebarSdgFilter value={sdgId} onChange={setSdgId} />
@@ -46,6 +49,8 @@ function Inicio() {
           ))}
         </section>
       </div>
+
+      <Footer />
     </div>
   );
 }

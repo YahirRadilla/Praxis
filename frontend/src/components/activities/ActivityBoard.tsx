@@ -1,17 +1,20 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  closestCenter,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  defaultDropAnimationSideEffects,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
   type Announcements,
+  type CollisionDetection,
   type DragCancelEvent,
   type DragEndEvent,
   type DragStartEvent,
-  type DropAnimation,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { Activity, ActivityStatus } from "../../types/activity";
@@ -25,19 +28,6 @@ import { ActivityCardView } from "./ActivityCard";
 import { ACTIVITY_STATUS } from "../../utils/statusStyles";
 
 const COLUMN_ORDER: ActivityStatus[] = ["PENDING", "IN_PROGRESS", "TO_VALIDATE", "DONE"];
-
-const dropAnimation: DropAnimation = {
-  duration: 200,
-  easing: "cubic-bezier(0.2, 0, 0, 1)",
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: { active: { opacity: "0.4" } },
-  }),
-};
-
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 interface ActivityBoardProps {
   projectId: number;
@@ -69,18 +59,69 @@ function ActivityBoard({ projectId, activities, team, isProjectOwner, readOnly }
 
   const activeActivity = activeId != null ? activities.find((a) => a.id === activeId) ?? null : null;
 
+  /**
+   * Resolves the hovered column/card into a target (status, index). `index`
+   * matches the position `moved` would land on if dropped there right now —
+   * i.e. `overActivity`'s own index in its (unfiltered) column, not an index
+   * recomputed after excluding `moved` from that list. Filtering `moved` out
+   * first used to shift every card after it one slot too early, landing the
+   * move one position above where the drag preview showed it.
+   */
   function resolveTarget(overId: string, excludeId: number): { status: ActivityStatus; index: number } | null {
+    const moved = activities.find((a) => a.id === excludeId);
+    if (!moved) return null;
+
     if (overId.startsWith("column-")) {
       const status = overId.replace("column-", "") as ActivityStatus;
-      const column = (columns.get(status) ?? []).filter((a) => a.id !== excludeId);
-      return { status, index: column.length };
+      const column = columns.get(status) ?? [];
+      // Dropping into empty space of `moved`'s own column: it's still
+      // counted in `column`, so the slot after removing+reappending it is
+      // one shorter than a plain `column.length`.
+      const index = moved.status === status ? Math.max(column.length - 1, 0) : column.length;
+      return { status, index };
     }
+
     const overActivity = activities.find((a) => a.id === Number(overId));
     if (!overActivity) return null;
-    const column = (columns.get(overActivity.status) ?? []).filter((a) => a.id !== excludeId);
+    const column = columns.get(overActivity.status) ?? [];
     const index = column.findIndex((a) => a.id === overActivity.id);
     return { status: overActivity.status, index: index === -1 ? column.length : index };
   }
+
+  /**
+   * Custom collision strategy: resolves which COLUMN is hovered first, then
+   * runs `closestCenter` only against that column's own cards.
+   *
+   * Every column is also a droppable (`column-<status>`) covering its whole
+   * area, in the same collision pool as every card inside it. Plain
+   * `closestCenter` (or `rectIntersection`) picks whichever droppable's
+   * center is nearest — and because the board is a flex row with the default
+   * `align-items: stretch`, a busy column is as tall as the tallest column,
+   * so its own vertical center often falls *between* two cards. Right there,
+   * `over` flips between the column and a card from one frame to the next;
+   * sortable's "make room" transform is cleared whenever `over` isn't a card
+   * in that column (`overIndex` has no match), so every card in the column
+   * snaps back then shifts again — that's the flicker. Narrowing the pool to
+   * one column's cards up front removes that race entirely.
+   */
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const isColumn = (id: UniqueIdentifier) => String(id).startsWith("column-");
+      const columnContainers = args.droppableContainers.filter((c) => isColumn(c.id));
+      const columnHit =
+        pointerWithin({ ...args, droppableContainers: columnContainers })[0] ??
+        rectIntersection({ ...args, droppableContainers: columnContainers })[0];
+      if (!columnHit) return [];
+
+      const status = String(columnHit.id).replace("column-", "") as ActivityStatus;
+      const cardIds = new Set((columns.get(status) ?? []).map((a) => a.id));
+      const cardContainers = args.droppableContainers.filter((c) => cardIds.has(Number(c.id)));
+      if (cardContainers.length === 0) return [columnHit];
+
+      return closestCenter({ ...args, droppableContainers: cardContainers });
+    },
+    [columns],
+  );
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(Number(event.active.id));
@@ -96,7 +137,8 @@ function ActivityBoard({ projectId, activities, team, isProjectOwner, readOnly }
 
     const target = resolveTarget(String(event.over.id), movedId);
     if (!target) return;
-    if (target.status === moved.status && target.index === moved.position) return;
+    const movedIndex = (columns.get(moved.status) ?? []).findIndex((a) => a.id === movedId);
+    if (target.status === moved.status && target.index === movedIndex) return;
 
     moveActivity.move(movedId, target.status, target.index, {
       onError: (error) => toast.error(getErrorMessage(error, "No se pudo mover la actividad.")),
@@ -136,10 +178,8 @@ function ActivityBoard({ projectId, activities, team, isProjectOwner, readOnly }
     },
   };
 
-  const reducedMotion = prefersReducedMotion();
-
   const board = (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="flex gap-3 overflow-x-auto scroll-thin pb-2">
       {COLUMN_ORDER.map((status) => (
         <BoardColumn
           key={status}
@@ -171,20 +211,31 @@ function ActivityBoard({ projectId, activities, team, isProjectOwner, readOnly }
       ) : (
         <DndContext
           sensors={sensors}
+          collisionDetection={collisionDetection}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
           accessibility={{ announcements }}
         >
           {board}
-          <DragOverlay dropAnimation={reducedMotion ? null : dropAnimation}>
+          {/* No drop-settle animation: the optimistic update in
+              `moveActivity.move` already moves the real card to its final
+              spot in the same tick the drop happens, so a separate ghost
+              animating back into place would just race the already-updated
+              real card — that's what looked like a flicker right at drop.
+              The overlay card also intentionally looks almost identical to
+              the resting card now (only a subtle shadow, no rotate/scale):
+              swapping from a tilted/scaled "lifted" ghost to a flat resting
+              card at the exact drop instant read as a pop/flicker on its
+              own, independent of timing. */}
+          <DragOverlay dropAnimation={null}>
             {activeActivity && (
               <ActivityCardView
                 activity={activeActivity}
                 projectId={projectId}
                 isProjectOwner={isProjectOwner}
                 canEdit={false}
-                className="rotate-[1.5deg] scale-[1.02] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_18px_40px_-16px_rgba(20,22,26,0.3)] motion-reduce:transform-none"
+                className="shadow-[0_1px_2px_rgba(20,22,26,0.04),0_10px_24px_-14px_rgba(20,22,26,0.25)]"
               />
             )}
           </DragOverlay>

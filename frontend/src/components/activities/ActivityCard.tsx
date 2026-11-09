@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -29,7 +29,7 @@ interface ActivityCardViewProps {
  * sortable `ActivityCard` below and by `ActivityBoard`'s `DragOverlay`, which
  * must render a copy of the card outside of any `SortableContext`.
  */
-export function ActivityCardView({
+function ActivityCardViewImpl({
   activity,
   projectId,
   isProjectOwner,
@@ -117,6 +117,16 @@ export function ActivityCardView({
   );
 }
 
+/**
+ * Memoized: dnd-kit's SortableContext re-renders every card in a column on
+ * each drag-over tick (to recalculate whether it should shift and make room
+ * for the dragged one), not just the card being dragged. Without this, that
+ * remounted the whole card body — labels, checklist bar, avatars, the
+ * Headless UI menu — on every pointer-move frame, which is what caused the
+ * drag to feel janky/flickery instead of smooth.
+ */
+export const ActivityCardView = memo(ActivityCardViewImpl);
+
 interface ActivityCardProps {
   activity: Activity;
   projectId: number;
@@ -136,12 +146,16 @@ function ActivityCard({ activity, projectId, isProjectOwner, canEdit, dragDisabl
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    // Without this, touch devices hand the gesture to native scrolling
+    // before PointerSensor's activation distance is reached, so dragging
+    // never starts on mobile.
+    touchAction: "none",
   };
 
-  function handleMoved() {
+  const handleMoved = useCallback(() => {
     setHighlighted(true);
     setTimeout(() => setHighlighted(false), 800);
-  }
+  }, []);
 
   function handleClick() {
     navigate(`/proyectos/${projectId}/actividades/${activity.id}`);
@@ -154,7 +168,11 @@ function ActivityCard({ activity, projectId, isProjectOwner, canEdit, dragDisabl
       {...attributes}
       {...(dragDisabled ? {} : listeners)}
       onClick={handleClick}
-      className={`cursor-pointer motion-reduce:transition-none transition-opacity duration-150 ${isDragging ? "opacity-40" : ""}`}
+      // Instant, not animated: a fading dim/undim competes visually with the
+      // sibling cards reordering at the exact same instant (the optimistic
+      // move lands in the same render as `isDragging` flipping), which reads
+      // as flicker. An instant toggle avoids that race entirely.
+      className={`cursor-pointer ${isDragging ? "opacity-40" : ""}`}
     >
       <ActivityCardView
         activity={activity}

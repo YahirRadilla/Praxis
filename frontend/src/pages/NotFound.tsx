@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { PRIMARY_BUTTON } from "../utils/statusStyles";
 
 function NotFound() {
@@ -13,6 +14,8 @@ function NotFound() {
           Volver al inicio
         </Link>
       </div>
+
+      <Footer />
     </div>
   );
 }

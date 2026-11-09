@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { useCreateClassGroup } from "../hooks/useClassGroups";
 import { getErrorMessage } from "../services/api";
 import FieldError from "../components/FieldError";
@@ -91,6 +92,8 @@ function CrearGrupoClase() {
           </section>
         </form>
       </div>
+
+      <Footer />
     </div>
   );
 }

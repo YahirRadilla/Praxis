@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import Skeleton from "../components/Skeleton";
 import { useImpact } from "../hooks/useImpact";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
@@ -183,6 +184,8 @@ function Impacto() {
 
         {!isLoading && !isError && stats && <ImpactoContent stats={stats} />}
       </div>
+
+      <Footer />
     </div>
   );
 }

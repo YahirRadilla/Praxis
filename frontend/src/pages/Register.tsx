@@ -9,6 +9,8 @@ import FieldError from "../components/FieldError";
 import { registerFormSchema, type RegisterFormValues } from "../schemas/auth.schema";
 import type { AccountType } from "../types/auth";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import uabcsSeal from "../assets/logos/uabcs-seal.png";
+import dascLockup from "../assets/logos/dasc-lockup.png";
 
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "STUDENT", label: "Estudiante" },
@@ -146,6 +148,11 @@ function Register() {
           </Link>
         </p>
       </form>
+
+      <div className="flex items-center gap-4">
+        <img src={uabcsSeal} alt="UABCS" className="h-11 object-contain" />
+        <img src={dascLockup} alt="DASC" className="h-8 object-contain" />
+      </div>
     </main>
   );
 }

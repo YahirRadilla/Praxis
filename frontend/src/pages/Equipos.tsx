@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SidebarNav from "../components/feed/SidebarNav";
 import TeamMemberRow from "../components/team/TeamMemberRow";
 import { useMyProjects } from "../hooks/useProjects";
@@ -48,6 +49,8 @@ function Equipos() {
           ))}
         </section>
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import StatusPill from "../components/StatusPill";
 import { useSdgs } from "../hooks/useSdgs";
 import { useCategories } from "../hooks/useCategories";
@@ -350,6 +351,8 @@ function EditProject() {
           </section>
         </form>
       </div>
+
+      <Footer />
     </div>
   );
 }

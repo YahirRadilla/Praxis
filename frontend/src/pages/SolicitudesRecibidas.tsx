@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SidebarNav from "../components/feed/SidebarNav";
 import TeamRequestRow from "../components/team/TeamRequestRow";
 import { useReceivedInvites, useReceivedRequests, useRespondToReceivedRequest } from "../hooks/useTeam";
@@ -69,6 +70,8 @@ function SolicitudesRecibidas() {
           </div>
         </section>
       </div>
+
+      <Footer />
     </div>
   );
 }

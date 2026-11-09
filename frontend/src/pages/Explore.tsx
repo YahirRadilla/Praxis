@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import ProjectCard from "../components/ProjectCard";
 import SdgMultiSelect from "../components/SdgMultiSelect";
 import CategoryMultiSelect from "../components/CategoryMultiSelect";
@@ -72,6 +73,8 @@ function Explore() {
           ))}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

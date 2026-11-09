@@ -8,6 +8,7 @@ import PasswordInput from "../components/PasswordInput";
 import FieldError from "../components/FieldError";
 import { loginFormSchema, type LoginFormValues } from "../schemas/auth.schema";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
+import Footer from "../components/Footer";
 
 function Login() {
   const navigate = useNavigate();
@@ -97,6 +98,8 @@ function Login() {
           </Link>
         </p>
       </form>
+
+      <Footer />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SidebarNav from "../components/feed/SidebarNav";
 import ProjectRow from "../components/ProjectRow";
 import { useSavedProjects } from "../hooks/useProjects";
@@ -30,6 +31,8 @@ function Guardados() {
           </div>
         </section>
       </div>
+
+      <Footer />
     </div>
   );
 }

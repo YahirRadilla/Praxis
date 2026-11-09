@@ -31,6 +31,8 @@ export function buildAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
     verifiedAt: null,
     createdAt: new Date().toISOString(),
     academicProgram: null,
+    semester: null,
+    cvUrl: null,
     ...overrides,
   };
 }

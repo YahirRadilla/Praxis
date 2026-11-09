@@ -7,6 +7,9 @@ export function useSearchUsers(accountType: string | undefined, q: string) {
   return useQuery({
     queryKey: ["users", accountType, q],
     queryFn: () => searchUsersRequest(token!, { accountType, q: q || undefined }),
-    enabled: !!token,
+    // Only search once the viewer has actually typed something — without
+    // this, opening the picker fires a query with an empty `q`, and the
+    // backend returns its first 20 users with no filter at all.
+    enabled: !!token && q.trim().length > 0,
   });
 }

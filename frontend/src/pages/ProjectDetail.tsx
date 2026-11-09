@@ -380,7 +380,10 @@ function ProjectDetail() {
         {linked ? (
           <div className="flex items-center justify-between gap-2">
             <p className="text-[13px] text-ink m-0">
-              Vinculado: <span className="font-semibold">{linked.name}</span>
+              Vinculado:{" "}
+              <Link to={`/usuarios/${linked.id}`} className="font-semibold hover:underline">
+                {linked.name}
+              </Link>
             </p>
             {isLinkedToMe ? (
               <button
@@ -1025,14 +1028,18 @@ function ProjectDetail() {
 
               <LateralCard title="Responsable">
                 <div className="flex items-center gap-2.5">
-                  <span
-                    style={{ backgroundColor: avatarColorFor(project.owner.id) }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0"
-                  >
-                    {project.owner.name.charAt(0).toUpperCase()}
-                  </span>
+                  <Link to={`/usuarios/${project.owner.id}`} className="shrink-0">
+                    <span
+                      style={{ backgroundColor: avatarColorFor(project.owner.id) }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[13px] font-bold"
+                    >
+                      {project.owner.name.charAt(0).toUpperCase()}
+                    </span>
+                  </Link>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-ink m-0 truncate">{project.owner.name}</p>
+                    <Link to={`/usuarios/${project.owner.id}`} className="hover:underline">
+                      <p className="text-[13px] font-semibold text-ink m-0 truncate">{project.owner.name}</p>
+                    </Link>
                     {project.owner.email && (
                       <p className="text-[11.5px] text-ink-faint m-0 truncate">{project.owner.email}</p>
                     )}
@@ -1041,13 +1048,17 @@ function ProjectDetail() {
                 {project.teacher && (
                   <p className="text-[12.5px] m-0">
                     <span className="text-ink-faint">Docente: </span>
-                    <span className="text-ink">{project.teacher.name}</span>
+                    <Link to={`/usuarios/${project.teacher.id}`} className="text-ink hover:underline">
+                      {project.teacher.name}
+                    </Link>
                   </p>
                 )}
                 {project.organization && (
                   <p className="text-[12.5px] m-0">
                     <span className="text-ink-faint">Organización: </span>
-                    <span className="text-ink">{project.organization.name}</span>
+                    <Link to={`/usuarios/${project.organization.id}`} className="text-ink hover:underline">
+                      {project.organization.name}
+                    </Link>
                   </p>
                 )}
                 <p className="text-[12.5px] m-0">
@@ -1159,14 +1170,18 @@ function ProjectDetail() {
                 <div className="flex flex-col gap-3">
                   {progressUpdates?.slice(0, 3).map((update) => (
                     <div key={update.id} className="flex gap-2.5">
-                      <span
-                        style={{ backgroundColor: avatarColorFor(update.author.id) }}
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9.5px] font-bold shrink-0 mt-0.5"
-                      >
-                        {update.author.name.charAt(0).toUpperCase()}
-                      </span>
+                      <Link to={`/usuarios/${update.author.id}`} className="shrink-0">
+                        <span
+                          style={{ backgroundColor: avatarColorFor(update.author.id) }}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9.5px] font-bold mt-0.5"
+                        >
+                          {update.author.name.charAt(0).toUpperCase()}
+                        </span>
+                      </Link>
                       <p className="text-[12px] text-ink-soft leading-snug m-0">
-                        <span className="font-semibold text-ink">{update.author.name}</span>{" "}
+                        <Link to={`/usuarios/${update.author.id}`} className="font-semibold text-ink hover:underline">
+                          {update.author.name}
+                        </Link>{" "}
                         {update.text.length > 70 ? `${update.text.slice(0, 70)}…` : update.text}
                         <span className="block text-[11px] text-ink-faint mt-0.5">{timeAgo(update.createdAt)}</span>
                       </p>

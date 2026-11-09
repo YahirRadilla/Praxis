@@ -11,6 +11,8 @@ export interface AuthUser {
   verifiedAt: string | null;
   createdAt: string;
   academicProgram: string | null;
+  semester: number | null;
+  cvUrl: string | null;
 }
 
 export interface AuthResponse {

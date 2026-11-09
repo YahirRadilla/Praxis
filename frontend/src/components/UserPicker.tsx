@@ -90,9 +90,13 @@ function UserPicker({ accountType, label, placeholder, value, onChange }: UserPi
             </button>
           )}
 
+          {!debouncedQuery.trim() && (
+            <p className="px-3.5 py-2 text-[12.5px] text-ink-faint m-0">Escribe un nombre o correo para buscar</p>
+          )}
+
           {isLoading && <p className="px-3.5 py-2 text-[12.5px] text-ink-faint m-0">Buscando…</p>}
 
-          {!isLoading && users?.length === 0 && debouncedQuery && (
+          {!isLoading && debouncedQuery.trim() && users?.length === 0 && (
             <p className="px-3.5 py-2 text-[12.5px] text-ink-faint m-0">Sin resultados</p>
           )}
 

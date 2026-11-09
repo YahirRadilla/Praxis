@@ -62,6 +62,7 @@ describe("UserPicker — search and select", () => {
     renderWithProviders(<ControlledUserPicker />);
 
     await user.click(screen.getByRole("button", { name: /Nombre o correo del docente/i }));
+    await user.type(screen.getByPlaceholderText("Buscar por nombre o correo"), "García");
     await user.click(await screen.findByText("Profa. García"));
     expect(screen.getByRole("button", { name: /Profa\. García/i })).toBeInTheDocument();
 

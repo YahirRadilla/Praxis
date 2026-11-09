@@ -81,6 +81,7 @@ describe("EditProfile — submit", () => {
         skills: ["React", "Diseño UX"],
         interests: ["Educación"],
         academicProgram: "",
+        semester: null,
       }),
     );
     expect(await screen.findByText("Pantalla de inicio")).toBeInTheDocument();
@@ -97,6 +98,43 @@ describe("EditProfile — submit", () => {
 
     await waitFor(() => expect(api.updateProfileRequest).toHaveBeenCalled());
     expect(screen.getByText("Completa tu perfil")).toBeInTheDocument();
+  });
+});
+
+describe("EditProfile — semester", () => {
+  it("shows the semester select for a STUDENT and includes it in the submit payload", async () => {
+    seedAuth({ accountType: "STUDENT", name: "Estudiante Prueba" });
+    vi.mocked(api.updateProfileRequest).mockResolvedValue(buildAuthUser({ accountType: "STUDENT" }));
+
+    const user = userEvent.setup();
+    renderProfile();
+
+    const select = screen.getByLabelText("Semestre");
+    await user.selectOptions(select, "5");
+    await user.click(screen.getByRole("button", { name: "Guardar perfil" }));
+
+    await waitFor(() =>
+      expect(api.updateProfileRequest).toHaveBeenCalledWith(
+        "test-token",
+        expect.objectContaining({ semester: 5 }),
+      ),
+    );
+  });
+
+  it("hides the semester select for a TEACHER and omits it from the submit payload", async () => {
+    seedAuth({ accountType: "TEACHER", name: "Docente Prueba" });
+    vi.mocked(api.updateProfileRequest).mockResolvedValue(buildAuthUser({ accountType: "TEACHER" }));
+
+    const user = userEvent.setup();
+    renderProfile();
+
+    expect(screen.queryByLabelText("Semestre")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Guardar perfil" }));
+
+    await waitFor(() => expect(api.updateProfileRequest).toHaveBeenCalled());
+    const payload = vi.mocked(api.updateProfileRequest).mock.calls[0][1];
+    expect(payload).not.toHaveProperty("semester");
   });
 });
 

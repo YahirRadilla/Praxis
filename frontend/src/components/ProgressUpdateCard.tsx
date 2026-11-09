@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { ProgressUpdate } from "../types/activity";
 import { CARD_SHADOW } from "../utils/statusStyles";
 import { EvidenceGallery } from "./evidence/EvidenceGallery";
@@ -22,14 +23,18 @@ function ProgressUpdateCard({ update, casual = false }: ProgressUpdateCardProps)
   return (
     <div className={`flex flex-col gap-3 bg-paper-raised border border-rule rounded-xl p-[18px] ${CARD_SHADOW}`}>
       <div className="flex items-center gap-[11px]">
-        <span
-          style={{ borderColor: "#26BDE2" }}
-          className="w-[38px] h-[38px] rounded-full bg-surface-accent border-2 flex items-center justify-center text-[14px] font-bold text-ink shrink-0"
-        >
-          {update.author.name.charAt(0).toUpperCase()}
-        </span>
+        <Link to={`/usuarios/${update.author.id}`} className="shrink-0">
+          <span
+            style={{ borderColor: "#26BDE2" }}
+            className="w-[38px] h-[38px] rounded-full bg-surface-accent border-2 flex items-center justify-center text-[14px] font-bold text-ink"
+          >
+            {update.author.name.charAt(0).toUpperCase()}
+          </span>
+        </Link>
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="font-heading text-[14px] font-bold text-ink">{update.author.name}</span>
+          <Link to={`/usuarios/${update.author.id}`} className="hover:underline w-fit">
+            <span className="font-heading text-[14px] font-bold text-ink">{update.author.name}</span>
+          </Link>
           <span className="text-[11.5px] text-ink-faint truncate">
             {update.activity ? `${update.activity.title} · ` : ""}
             {formatDate(update.createdAt)}

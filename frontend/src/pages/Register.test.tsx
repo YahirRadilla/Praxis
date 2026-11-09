@@ -22,6 +22,8 @@ const MOCK_AUTH_RESPONSE = {
     verifiedAt: null,
     createdAt: new Date().toISOString(),
     academicProgram: null,
+    semester: null,
+    cvUrl: null,
   },
   token: "jwt-token",
 };

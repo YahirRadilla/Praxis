@@ -3,13 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useMyProjects } from "../../hooks/useProjects";
 import { CARD_SHADOW } from "../../utils/statusStyles";
 import { pluralize } from "../../utils/text";
-
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  STUDENT: "Estudiante",
-  TEACHER: "Docente",
-  ORGANIZATION: "Organización",
-  INDEPENDENT: "Independiente",
-};
+import { ACCOUNT_TYPE_LABELS } from "../../utils/accountTypes";
 
 function ProfileSidebarCard() {
   const { user } = useAuth();
@@ -19,7 +13,7 @@ function ProfileSidebarCard() {
 
   return (
     <Link
-      to="/perfil"
+      to={`/usuarios/${user.id}`}
       className={`flex flex-col bg-paper-raised border border-rule rounded-xl overflow-hidden hover:shadow-[0_1px_2px_rgba(20,22,26,0.04),0_16px_36px_-14px_rgba(20,22,26,0.28)] ${CARD_SHADOW}`}
     >
       <div className="h-14 bg-[linear-gradient(135deg,var(--color-accent-primary),#1b3a28)]" />

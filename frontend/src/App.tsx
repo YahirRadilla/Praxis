@@ -18,6 +18,9 @@ import CrearReto from "./pages/CrearReto";
 import MisGruposClase from "./pages/MisGruposClase";
 import CrearGrupoClase from "./pages/CrearGrupoClase";
 import GrupoClaseDetalle from "./pages/GrupoClaseDetalle";
+import UserProfile from "./pages/UserProfile";
+import Mensajes from "./pages/Mensajes";
+import Conversacion from "./pages/Conversacion";
 // import Impacto from "./pages/Impacto"; // desactivado por ahora
 import RequireAuth from "./components/RequireAuth";
 import RequireAccountType from "./components/RequireAccountType";
@@ -128,6 +131,23 @@ function App() {
           }
         />
         <Route path="/grupos-clase/:id" element={<GrupoClaseDetalle />} />
+        <Route path="/usuarios/:id" element={<UserProfile />} />
+        <Route
+          path="/mensajes"
+          element={
+            <RequireAuth>
+              <Mensajes />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/mensajes/:userId"
+          element={
+            <RequireAuth>
+              <Conversacion />
+            </RequireAuth>
+          }
+        />
         <Route path="/proyectos/:id" element={<ProjectDetail />} />
         <Route path="/proyectos/:id/actividades/:activityId" element={<ProjectDetail />} />
         <Route

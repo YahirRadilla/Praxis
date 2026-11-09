@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import type { ReactElement } from "react";
 import TeamRequestRow from "./TeamRequestRow";
 import type { TeamRequest } from "../../types/team";
+
+function renderRow(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 function requestFixture(overrides: Partial<TeamRequest> = {}): TeamRequest {
   return {
@@ -26,7 +32,7 @@ describe("TeamRequestRow", () => {
     const onAccept = vi.fn();
     const onReject = vi.fn();
     const user = userEvent.setup();
-    render(<TeamRequestRow request={requestFixture()} onAccept={onAccept} onReject={onReject} />);
+    renderRow(<TeamRequestRow request={requestFixture()} onAccept={onAccept} onReject={onReject} />);
 
     await user.click(screen.getByRole("button", { name: "Aceptar" }));
 
@@ -38,7 +44,7 @@ describe("TeamRequestRow", () => {
     const onAccept = vi.fn();
     const onReject = vi.fn();
     const user = userEvent.setup();
-    render(<TeamRequestRow request={requestFixture()} onAccept={onAccept} onReject={onReject} />);
+    renderRow(<TeamRequestRow request={requestFixture()} onAccept={onAccept} onReject={onReject} />);
 
     await user.click(screen.getByRole("button", { name: "Rechazar" }));
 
@@ -47,7 +53,7 @@ describe("TeamRequestRow", () => {
   });
 
   it("labels an OWNER-initiated EVALUATOR invite distinctly from a join request", () => {
-    render(
+    renderRow(
       <TeamRequestRow
         request={requestFixture({ initiatedBy: "OWNER", purpose: "EVALUATOR" })}
         onAccept={vi.fn()}
@@ -58,7 +64,7 @@ describe("TeamRequestRow", () => {
   });
 
   it("shows no purpose badge for a plain REQUESTER-initiated join request", () => {
-    render(<TeamRequestRow request={requestFixture()} onAccept={vi.fn()} onReject={vi.fn()} />);
+    renderRow(<TeamRequestRow request={requestFixture()} onAccept={vi.fn()} onReject={vi.fn()} />);
     expect(screen.queryByText(/te invitan/i)).not.toBeInTheDocument();
   });
 });

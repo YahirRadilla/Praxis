@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { TeamMember } from "../../types/team";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -17,14 +18,18 @@ interface TeamMemberRowProps {
 function TeamMemberRow({ member, onRemove }: TeamMemberRowProps) {
   return (
     <div className="flex items-center gap-3 py-[18px] px-3 border-b border-rule">
-      <span
-        style={{ borderColor: "#26BDE2" }}
-        className="w-9 h-9 rounded-full bg-surface-accent border-2 flex items-center justify-center text-[13px] font-bold text-ink shrink-0"
-      >
-        {member.name.charAt(0).toUpperCase()}
-      </span>
+      <Link to={`/usuarios/${member.id}`} className="shrink-0">
+        <span
+          style={{ borderColor: "#26BDE2" }}
+          className="w-9 h-9 rounded-full bg-surface-accent border-2 flex items-center justify-center text-[13px] font-bold text-ink"
+        >
+          {member.name.charAt(0).toUpperCase()}
+        </span>
+      </Link>
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-        <span className="text-[13.5px] font-semibold text-ink truncate">{member.name}</span>
+        <Link to={`/usuarios/${member.id}`} className="hover:underline w-fit">
+          <span className="text-[13.5px] font-semibold text-ink truncate">{member.name}</span>
+        </Link>
         {member.email && (
           <span className="text-[11.5px] text-ink-faint truncate">{member.email}</span>
         )}

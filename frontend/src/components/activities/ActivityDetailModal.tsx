@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import {
@@ -612,15 +613,20 @@ function ActivityDetailModal({
                     <div className="flex flex-col gap-3">
                       {activity.comments.map((c) => (
                         <div key={c.id} className="flex gap-2.5">
-                          <span
-                            style={{ backgroundColor: avatarColorFor(c.author.id) }}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9.5px] font-bold shrink-0 mt-0.5"
-                          >
-                            {c.author.name.charAt(0).toUpperCase()}
-                          </span>
+                          <Link to={`/usuarios/${c.author.id}`} className="shrink-0">
+                            <span
+                              style={{ backgroundColor: avatarColorFor(c.author.id) }}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9.5px] font-bold mt-0.5"
+                            >
+                              {c.author.name.charAt(0).toUpperCase()}
+                            </span>
+                          </Link>
                           <div className="flex-1 min-w-0">
                             <p className="text-[12.5px] text-ink-soft leading-snug m-0">
-                              <span className="font-semibold text-ink">{c.author.name}</span> {c.text}
+                              <Link to={`/usuarios/${c.author.id}`} className="font-semibold text-ink hover:underline">
+                                {c.author.name}
+                              </Link>{" "}
+                              {c.text}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-[11px] text-ink-faint">{formatDateTime(c.createdAt)}</span>

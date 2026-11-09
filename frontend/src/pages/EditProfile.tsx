@@ -29,11 +29,18 @@ function EditProfile() {
   const [skills, setSkills] = useState(toCsv(user?.skills ?? []));
   const [interests, setInterests] = useState(toCsv(user?.interests ?? []));
   const [academicProgram, setAcademicProgram] = useState(user?.academicProgram ?? "");
+  const [semester, setSemester] = useState(user?.semester ? String(user.semester) : "");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     updateProfile.mutate(
-      { name, skills: fromCsv(skills), interests: fromCsv(interests), academicProgram },
+      {
+        name,
+        skills: fromCsv(skills),
+        interests: fromCsv(interests),
+        academicProgram,
+        ...(user?.accountType === "STUDENT" ? { semester: semester === "" ? null : Number(semester) } : {}),
+      },
       {
         onSuccess: () => {
           toast.success("Perfil actualizado");
@@ -86,6 +93,24 @@ function EditProfile() {
             className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
           />
         </label>
+
+        {user?.accountType === "STUDENT" && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-semibold text-ink">Semestre</span>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              className="border border-rule rounded-lg bg-paper px-3.5 py-3 text-[13px] text-ink focus:outline-2 focus:outline-accent-primary focus:outline-offset-1"
+            >
+              <option value=""></option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-semibold text-ink">Habilidades</span>

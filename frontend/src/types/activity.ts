@@ -176,4 +176,6 @@ export interface FeedUpdate extends ProgressUpdate {
     sdgs: { projectId: number; sdgId: number; sdg: Sdg }[];
     categories: { projectId: number; categoryId: number; category: Category }[];
   };
+  likeCount: number;
+  likedByMe: boolean;
 }

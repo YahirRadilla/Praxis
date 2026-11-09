@@ -27,7 +27,15 @@ import type {
 import type { Challenge, CreateChallengePayload, ListChallengesParams } from "../types/challenge";
 import type { Dictamen, DictamenVerdict } from "../types/dictamen";
 import type { Notification } from "../types/notification";
+import type {
+  ConversationSummary,
+  ConversationWithUser,
+  MessagesUnreadCount,
+  SendMessagePayload,
+  SendMessageResponse,
+} from "../types/conversation";
 import type { ImpactStats } from "../types/impact";
+import type { PublicUserProfile } from "../types/user";
 import type {
   ClassGroup,
   ClassGroupMemberRow,
@@ -118,10 +126,16 @@ export function verifyAccountWithGoogleRequest(token: string, idToken: string) {
   return request<AuthUser>("/api/auth/verify-google", { method: "POST", token, body: { idToken } });
 }
 
-export function updateProfileRequest(
-  token: string,
-  payload: { name?: string; skills?: string[]; interests?: string[]; academicProgram?: string },
-) {
+export type UpdateProfilePayload = {
+  name?: string;
+  skills?: string[];
+  interests?: string[];
+  academicProgram?: string;
+  semester?: number | null;
+  cvUrl?: string | null;
+};
+
+export function updateProfileRequest(token: string, payload: UpdateProfilePayload) {
   return request<AuthUser>("/api/users/me", { method: "PATCH", token, body: payload });
 }
 
@@ -530,8 +544,32 @@ export async function uploadFileRequest(
   return res.json();
 }
 
-export function listFeedRequest(params: { categoryId?: number } = {}) {
-  return request<FeedUpdate[]>("/api/feed", { query: { categoryId: params.categoryId } });
+export function listFeedRequest(params: { categoryId?: number } = {}, token?: string | null) {
+  return request<FeedUpdate[]>("/api/feed", { query: { categoryId: params.categoryId }, token });
+}
+
+export function likePostRequest(token: string, updateId: number) {
+  return request<{ liked: true }>(`/api/feed/${updateId}/like`, { method: "POST", token });
+}
+
+export function unlikePostRequest(token: string, updateId: number) {
+  return request<{ liked: false }>(`/api/feed/${updateId}/like`, { method: "DELETE", token });
+}
+
+export function getPublicProfileRequest(id: number, token?: string | null) {
+  return request<PublicUserProfile>(`/api/users/${id}`, { token });
+}
+
+export function listUserPublicProjectsRequest(id: number) {
+  return request<Project[]>(`/api/users/${id}/projects`);
+}
+
+export function followUserRequest(token: string, id: number) {
+  return request<{ following: true }>(`/api/users/${id}/follow`, { method: "POST", token });
+}
+
+export function unfollowUserRequest(token: string, id: number) {
+  return request<{ following: false }>(`/api/users/${id}/follow`, { method: "DELETE", token });
 }
 
 export function listMyProjectsRequest(token: string) {
@@ -701,4 +739,42 @@ export function markNotificationReadRequest(token: string, id: number) {
 
 export function markAllNotificationsReadRequest(token: string) {
   return request<void>("/api/notifications/read-all", { method: "POST", token });
+}
+
+// --- Conversations ---------------------------------------------------------
+
+export function listConversationsRequest(token: string, box: "inbox" | "requests" = "inbox") {
+  return request<ConversationSummary[]>("/api/conversations", { token, query: { box } });
+}
+
+export function getMessagesUnreadCountRequest(token: string) {
+  return request<MessagesUnreadCount>("/api/conversations/unread-count", { token });
+}
+
+export function getConversationWithUserRequest(token: string, userId: number) {
+  return request<ConversationWithUser>(`/api/conversations/with/${userId}`, { token });
+}
+
+export function sendMessageRequest(token: string, payload: SendMessagePayload) {
+  return request<SendMessageResponse>("/api/conversations/messages", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function respondConversationRequest(
+  token: string,
+  id: number,
+  status: "ACCEPTED" | "REJECTED",
+) {
+  return request<ConversationSummary>(`/api/conversations/${id}`, {
+    method: "PATCH",
+    token,
+    body: { status },
+  });
+}
+
+export function markConversationReadRequest(token: string, id: number) {
+  return request<void>(`/api/conversations/${id}/read`, { method: "POST", token });
 }

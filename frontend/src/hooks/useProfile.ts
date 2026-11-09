@@ -1,16 +1,22 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getErrorMessage, updateProfileRequest, verifyAccountWithGoogleRequest } from "../services/api";
+import {
+  getErrorMessage,
+  updateProfileRequest,
+  verifyAccountWithGoogleRequest,
+  type UpdateProfilePayload,
+} from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export function useUpdateProfile() {
   const { token, setAuth } = useAuth();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { name?: string; skills?: string[]; interests?: string[]; academicProgram?: string }) =>
-      updateProfileRequest(token!, payload),
+    mutationFn: (payload: UpdateProfilePayload) => updateProfileRequest(token!, payload),
     onSuccess: (updatedUser) => {
       setAuth({ user: updatedUser, token: token! });
+      queryClient.invalidateQueries({ queryKey: ["user-profile", updatedUser.id] });
     },
   });
 }

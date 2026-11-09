@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProjectHeaderBand from "../components/ProjectHeaderBand";
+import BannerUploader, { BANNER_PILL_BUTTON } from "../components/BannerUploader";
 import ProgressUpdateCard from "../components/ProgressUpdateCard";
 import TeamMemberRow from "../components/team/TeamMemberRow";
 import TeamRequestRow from "../components/team/TeamRequestRow";
@@ -14,10 +15,14 @@ import ActivityDetailModal from "../components/activities/ActivityDetailModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FileDropzone from "../components/FileDropzone";
 import AttachmentPreviewGrid from "../components/evidence/AttachmentPreviewGrid";
+import ImageLightbox from "../components/evidence/ImageLightbox";
+import PdfViewerDialog from "../components/evidence/PdfViewerDialog";
 import FieldValidationHint from "../components/FieldValidationHint";
 import { Lateral, LateralCard } from "../components/LayoutPrimitives";
 import type { ProjectPersonRef } from "../types/project";
+import type { Evidence } from "../types/activity";
 import type { DictamenVerdict } from "../types/dictamen";
+import { isPreviewableImage, isPreviewablePdf, toPreviewEvidence } from "../utils/mimePreview";
 import { useAuth } from "../context/AuthContext";
 import {
   useArchiveProject,
@@ -43,7 +48,7 @@ import {
   useRemoveTeamMember,
 } from "../hooks/useTeam";
 import { useActivities } from "../hooks/useActivities";
-import { useProgressUpdates, useCreateProgressUpdate, useUploadFile } from "../hooks/useProgressUpdates";
+import { useProgressUpdates, useCreateProgressUpdate } from "../hooks/useProgressUpdates";
 import { useDictamenes, useCreateDictamen } from "../hooks/useDictamenes";
 import { useRequiredFieldHint } from "../hooks/useRequiredFieldHint";
 import { getErrorMessage, uploadFileRequest } from "../services/api";
@@ -58,7 +63,19 @@ import {
 } from "../utils/statusStyles";
 import { pluralize, timeAgo } from "../utils/text";
 import { avatarColorFor } from "../utils/avatarColor";
-import { CheckCircle, Circle, FileText, LinkSimple, Trash, WarningCircle } from "@phosphor-icons/react";
+import {
+  Bookmark,
+  CheckCircle,
+  Circle,
+  FileText,
+  LinkSimple,
+  Lock,
+  LockOpen,
+  PencilSimple,
+  Trash,
+  UserPlus,
+  WarningCircle,
+} from "@phosphor-icons/react";
 
 type TabKey = "info" | "actividades" | "equipo" | "anexos";
 
@@ -92,6 +109,21 @@ let evidenceLocalIdSeq = 0;
 function nextEvidenceLocalId(): string {
   evidenceLocalIdSeq += 1;
   return `evidence-attachment-${evidenceLocalIdSeq}`;
+}
+
+// Same concurrency-safe pattern as EvidenceAttachment above, applied to the
+// Anexos tab's resource uploads (which can now attach multiple files).
+type ResourceAttachment = {
+  localId: string;
+  file: File;
+  status: "uploading" | "done" | "error";
+  result?: { url: string; fileName: string; mimeType: string; sizeBytes: number };
+};
+
+let resourceLocalIdSeq = 0;
+function nextResourceLocalId(): string {
+  resourceLocalIdSeq += 1;
+  return `resource-attachment-${resourceLocalIdSeq}`;
 }
 
 function ProjectDetail() {
@@ -133,7 +165,6 @@ function ProjectDetail() {
   const leaveTeam = useLeaveTeam(projectId);
   const removeTeamMember = useRemoveTeamMember(projectId);
   const createProgressUpdate = useCreateProgressUpdate(projectId);
-  const uploadFile = useUploadFile();
   const createDictamen = useCreateDictamen(projectId);
   const { data: savedProjects } = useSavedProjects();
   const saveProject = useSaveProject();
@@ -152,6 +183,7 @@ function ProjectDetail() {
   const [dictamenVerdict, setDictamenVerdict] = useState<DictamenVerdict>("APPROVED");
   const [dictamenComment, setDictamenComment] = useState("");
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showVisibilityConfirm, setShowVisibilityConfirm] = useState(false);
   // WU-09: "Salir del equipo" (accepted member) / "Dejar de evaluar"
   // (confirmed evaluator) both call `DELETE /team/me`; only the dialog copy
   // differs, so one piece of state covers both.
@@ -170,12 +202,9 @@ function ProjectDetail() {
   const [resourceLabel, setResourceLabel] = useState("");
   const [resourceDescription, setResourceDescription] = useState("");
   const [resourceUrl, setResourceUrl] = useState("");
-  const [resourceFile, setResourceFile] = useState<{
-    url: string;
-    fileName: string;
-    mimeType: string;
-    sizeBytes: number;
-  } | null>(null);
+  const [resourceFiles, setResourceFiles] = useState<ResourceAttachment[]>([]);
+  const [resourceLightboxIndex, setResourceLightboxIndex] = useState<number | null>(null);
+  const [resourcePdfPreview, setResourcePdfPreview] = useState<Evidence | null>(null);
 
   useEffect(() => {
     if (project) setExtendedInfoDraft(project.extendedInfo ?? "");
@@ -226,6 +255,7 @@ function ProjectDetail() {
   const isEvaluator = viewer?.isEvaluator ?? false;
   const canSubmitDictamen = viewer?.canSubmitDictamen ?? false;
   const doneCount = activities?.filter((a) => a.status === "DONE").length ?? 0;
+  const imageResources = (resources ?? []).filter((r) => r.type === "FILE" && isPreviewableImage(r.mimeType));
   // WU-11: reused from the top-level `useActivities` gate; kept here so the
   // tab list, the Información summary card, and the deep-link modal all
   // agree on the same board-visibility rule (decisión 10).
@@ -260,8 +290,10 @@ function ProjectDetail() {
     updateProject.mutate(
       { visibility: next },
       {
-        onSuccess: () =>
-          toast.success(next === "PUBLIC" ? "Proyecto ahora es público" : "Proyecto ahora es privado"),
+        onSuccess: () => {
+          toast.success(next === "PUBLIC" ? "Proyecto ahora es público" : "Proyecto ahora es privado");
+          setShowVisibilityConfirm(false);
+        },
         onError: (error) => toast.error(getErrorMessage(error, "No se pudo cambiar la visibilidad.")),
       },
     );
@@ -527,53 +559,121 @@ function ProjectDetail() {
     );
   }
 
-  function handleResourceFileSelected(file: File) {
-    uploadFile.mutate(file, {
-      onSuccess: (data) => setResourceFile(data),
-      onError: (error) => {
-        toast.error(getErrorMessage(error, "No se pudo subir el archivo."));
-        setResourceFile(null);
+  // Same concurrency-safe pattern as uploadEvidenceAttachment above: each
+  // file gets its own direct `uploadFileRequest` call instead of sharing one
+  // `useUploadFile()` mutation hook instance.
+  function uploadResourceFile(localId: string, file: File) {
+    uploadFileRequest(token!, file).then(
+      (result) => {
+        setResourceFiles((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "done", result } : a)),
+        );
       },
-    });
+      (error) => {
+        setResourceFiles((prev) =>
+          prev.map((a) => (a.localId === localId ? { ...a, status: "error" } : a)),
+        );
+        toast.error(getErrorMessage(error, `No se pudo subir "${file.name}".`));
+      },
+    );
+  }
+
+  function handleResourceFilesSelected(files: File[]) {
+    const accepted = files.map((file) => ({
+      localId: nextResourceLocalId(),
+      file,
+      status: "uploading" as const,
+    }));
+    setResourceFiles((prev) => [...prev, ...accepted]);
+    accepted.forEach((a) => uploadResourceFile(a.localId, a.file));
+  }
+
+  function removeResourceFile(localId: string) {
+    setResourceFiles((prev) => prev.filter((a) => a.localId !== localId));
+  }
+
+  function retryResourceFile(localId: string) {
+    const attachment = resourceFiles.find((a) => a.localId === localId);
+    if (!attachment) return;
+    setResourceFiles((prev) =>
+      prev.map((a) => (a.localId === localId ? { ...a, status: "uploading" } : a)),
+    );
+    uploadResourceFile(localId, attachment.file);
   }
 
   function handleAddResource(e: FormEvent) {
     e.preventDefault();
-    const requiredFields = [{ key: "resourceLabel", value: resourceLabel }];
-    if (resourceMode === "link") requiredFields.push({ key: "resourceUrl", value: resourceUrl });
-    if (!validateRequired(requiredFields)) return;
-    if (resourceMode === "file" && !resourceFile) return;
+    const doneFiles = resourceFiles.filter((a) => a.status === "done" && a.result);
+    if (resourceMode === "link") {
+      if (
+        !validateRequired([
+          { key: "resourceLabel", value: resourceLabel },
+          { key: "resourceUrl", value: resourceUrl },
+        ])
+      )
+        return;
+    } else if (doneFiles.length === 0) {
+      return;
+    }
 
-    const payload =
-      resourceMode === "file" && resourceFile
-        ? {
-            type: "FILE" as const,
-            url: resourceFile.url,
-            fileName: resourceFile.fileName,
-            mimeType: resourceFile.mimeType,
-            sizeBytes: resourceFile.sizeBytes,
-            label: resourceLabel.trim(),
-            description: resourceDescription.trim() || undefined,
-          }
-        : {
-            type: "LINK" as const,
-            url: resourceUrl.trim(),
-            label: resourceLabel.trim(),
-            description: resourceDescription.trim() || undefined,
-          };
-
-    createResource.mutate(payload, {
-      onSuccess: () => {
-        toast.success("Anexo agregado");
+    if (resourceMode === "file") {
+      const requests = doneFiles.map((a) => {
+        const label =
+          doneFiles.length === 1
+            ? resourceLabel.trim() || a.result!.fileName
+            : resourceLabel.trim()
+              ? `${resourceLabel.trim()} — ${a.result!.fileName}`
+              : a.result!.fileName;
+        return new Promise<void>((resolve) => {
+          createResource.mutate(
+            {
+              type: "FILE",
+              url: a.result!.url,
+              fileName: a.result!.fileName,
+              mimeType: a.result!.mimeType,
+              sizeBytes: a.result!.sizeBytes,
+              label,
+              description: resourceDescription.trim() || undefined,
+            },
+            {
+              onError: (error) => toast.error(getErrorMessage(error, `No se pudo agregar "${a.result!.fileName}".`)),
+              onSettled: () => resolve(),
+            },
+          );
+        });
+      });
+      Promise.all(requests).then(() => {
+        toast.success(doneFiles.length > 1 ? "Anexos agregados" : "Anexo agregado");
         setResourceLabel("");
         setResourceDescription("");
         setResourceUrl("");
-        setResourceFile(null);
+        setResourceFiles([]);
         setResourceMode("link");
         setShowAddResourceForm(false);
+      });
+      return;
+    }
+
+    createResource.mutate(
+      {
+        type: "LINK",
+        url: resourceUrl.trim(),
+        label: resourceLabel.trim(),
+        description: resourceDescription.trim() || undefined,
       },
-      onError: (error) => toast.error(getErrorMessage(error, "No se pudo agregar el anexo.")),
-    });
+      {
+        onSuccess: () => {
+          toast.success("Anexo agregado");
+          setResourceLabel("");
+          setResourceDescription("");
+          setResourceUrl("");
+          setResourceFiles([]);
+          setResourceMode("link");
+          setShowAddResourceForm(false);
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "No se pudo agregar el anexo.")),
+      },
+    );
   }
 
   function handleDeleteResource(resourceId: number) {
@@ -584,22 +684,34 @@ function ProjectDetail() {
 
   const headerActions = (
     <>
+      {isOwner && !project.archived && (
+        <BannerUploader
+          hasBanner={!!project.bannerUrl}
+          onSave={(bannerUrl) => updateProject.mutateAsync({ bannerUrl })}
+        />
+      )}
       {isOwner && (
         <button
           type="button"
           onClick={() => navigate(`/proyectos/${project.id}/editar`)}
-          className="rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer border border-rule text-ink hover:bg-surface-ground"
+          className={BANNER_PILL_BUTTON}
         >
+          <PencilSimple size={14} weight="bold" />
           Editar proyecto
         </button>
       )}
       {isOwner && (
         <button
           type="button"
-          onClick={handleToggleVisibility}
+          onClick={() => setShowVisibilityConfirm(true)}
           disabled={updateProject.isPending}
-          className="rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer border border-rule text-ink hover:bg-surface-ground disabled:opacity-60"
+          className={BANNER_PILL_BUTTON}
         >
+          {project.visibility === "PUBLIC" ? (
+            <Lock size={14} weight="bold" />
+          ) : (
+            <LockOpen size={14} weight="bold" />
+          )}
           {project.visibility === "PUBLIC" ? "Hacer privado" : "Hacer público"}
         </button>
       )}
@@ -630,8 +742,9 @@ function ProjectDetail() {
           type="button"
           onClick={handleRequestToJoin}
           disabled={requestToJoin.isPending}
-          className={`rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
+          className={`flex items-center gap-1.5 rounded-full text-[13px] font-bold py-2.5 px-5 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
         >
+          <UserPlus size={15} weight="bold" />
           {requestToJoin.isPending ? "Enviando…" : "Solicitar participación"}
         </button>
       )}
@@ -657,8 +770,9 @@ function ProjectDetail() {
           type="button"
           onClick={handleToggleSave}
           disabled={saveProject.isPending || unsaveProject.isPending}
-          className="rounded-full bg-paper-raised border border-rule text-ink text-[13px] font-semibold py-2.5 px-5 cursor-pointer hover:bg-surface-ground disabled:opacity-60"
+          className="flex items-center gap-1.5 rounded-full bg-paper-raised border border-rule text-ink text-[13px] font-semibold py-2.5 px-5 cursor-pointer hover:bg-surface-ground disabled:opacity-60"
         >
+          <Bookmark size={15} weight={isSaved ? "fill" : "bold"} />
           {isSaved ? "Guardado" : "Guardar"}
         </button>
       )}
@@ -1300,18 +1414,15 @@ function ProjectDetail() {
                     ) : (
                       <div className="flex flex-col gap-2">
                         <FileDropzone
+                          multiple
                           hint="Cualquier tipo de archivo · Máximo 10MB"
-                          onFilesSelected={(files) => handleResourceFileSelected(files[0])}
-                          disabled={uploadFile.isPending}
+                          onFilesSelected={handleResourceFilesSelected}
                         />
-                        {uploadFile.isPending && (
-                          <span className="text-[11.5px] text-ink-faint shrink-0">Subiendo…</span>
-                        )}
-                        {resourceFile && !uploadFile.isPending && (
-                          <span className="text-[11.5px] text-accent-primary font-semibold shrink-0 truncate max-w-[160px]">
-                            {resourceFile.fileName}
-                          </span>
-                        )}
+                        <AttachmentPreviewGrid
+                          attachments={resourceFiles}
+                          onRemove={removeResourceFile}
+                          onRetry={retryResourceFile}
+                        />
                       </div>
                     )}
                   </div>
@@ -1319,8 +1430,8 @@ function ProjectDetail() {
                     type="submit"
                     disabled={
                       createResource.isPending ||
-                      uploadFile.isPending ||
-                      (resourceMode === "file" && !resourceFile)
+                      resourceFiles.some((a) => a.status === "uploading") ||
+                      (resourceMode === "file" && resourceFiles.filter((a) => a.status === "done").length === 0)
                     }
                     className={`self-start rounded-full text-[12px] font-bold px-4 py-2 cursor-pointer disabled:opacity-60 ${PRIMARY_BUTTON}`}
                   >
@@ -1343,17 +1454,43 @@ function ProjectDetail() {
                     ) : (
                       <LinkSimple size={18} className="text-ink-faint shrink-0" />
                     )}
-                    <a
-                      href={resource.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 min-w-0 hover:underline"
-                    >
-                      <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
-                      {resource.description && (
-                        <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
-                      )}
-                    </a>
+                    {resource.type === "FILE" && isPreviewableImage(resource.mimeType) ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setResourceLightboxIndex(imageResources.findIndex((r) => r.id === resource.id))
+                        }
+                        className="flex-1 min-w-0 text-left hover:underline"
+                      >
+                        <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                        {resource.description && (
+                          <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                        )}
+                      </button>
+                    ) : resource.type === "FILE" && isPreviewablePdf(resource.mimeType) ? (
+                      <button
+                        type="button"
+                        onClick={() => setResourcePdfPreview(toPreviewEvidence(resource))}
+                        className="flex-1 min-w-0 text-left hover:underline"
+                      >
+                        <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                        {resource.description && (
+                          <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                        )}
+                      </button>
+                    ) : (
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 min-w-0 hover:underline"
+                      >
+                        <p className="text-[12.5px] font-semibold text-ink m-0 truncate">{resource.label}</p>
+                        {resource.description && (
+                          <p className="text-[11px] text-ink-faint m-0 truncate">{resource.description}</p>
+                        )}
+                      </a>
+                    )}
                     {resource.sizeBytes != null && (
                       <span className="text-[11px] text-ink-faint shrink-0">
                         {formatResourceSize(resource.sizeBytes)}
@@ -1398,6 +1535,25 @@ function ProjectDetail() {
       )}
 
       <ConfirmDialog
+        open={showVisibilityConfirm}
+        title={project.visibility === "PUBLIC" ? "Hacer privado el proyecto" : "Hacer público el proyecto"}
+        description={
+          project.visibility === "PUBLIC"
+            ? "Solo tú, tu equipo y las personas que invites podrán verlo. Dejará de aparecer en Explorar y en las búsquedas públicas. Puedes volver a hacerlo público cuando quieras."
+            : "Cualquier persona podrá ver este proyecto, incluido en Explorar y en las búsquedas públicas. Puedes volver a hacerlo privado cuando quieras."
+        }
+        confirmLabel={
+          updateProject.isPending
+            ? "Guardando…"
+            : project.visibility === "PUBLIC"
+              ? "Hacer privado"
+              : "Hacer público"
+        }
+        onConfirm={handleToggleVisibility}
+        onClose={() => setShowVisibilityConfirm(false)}
+      />
+
+      <ConfirmDialog
         open={showArchiveConfirm}
         title="Archivar proyecto"
         description="El proyecto quedará de solo lectura: nadie podrá editarlo, agregar actividades, avances, anexos ni dictámenes. Puedes desarchivarlo cuando quieras."
@@ -1433,6 +1589,14 @@ function ProjectDetail() {
         onConfirm={handleRemoveTeamMember}
         onClose={() => setRemoveTarget(null)}
       />
+
+      <ImageLightbox
+        images={imageResources.map(toPreviewEvidence)}
+        index={resourceLightboxIndex}
+        onClose={() => setResourceLightboxIndex(null)}
+        onIndexChange={setResourceLightboxIndex}
+      />
+      <PdfViewerDialog pdf={resourcePdfPreview} onClose={() => setResourcePdfPreview(null)} />
 
       <Footer />
     </div>

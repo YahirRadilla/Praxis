@@ -73,6 +73,7 @@ export interface UpdateProjectData {
   problemStatement?: string;
   objectives?: string;
   extendedInfo?: string | null;
+  bannerUrl?: string | null;
   teacherId?: number | null;
   organizationId?: number | null;
   visibility?: ProjectVisibility;

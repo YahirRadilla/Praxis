@@ -3,6 +3,7 @@ import {
   createChallengeRequest,
   getChallengeRequest,
   listChallengesRequest,
+  updateChallengeRequest,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import type { CreateChallengePayload, ListChallengesParams } from "../types/challenge";
@@ -28,5 +29,17 @@ export function useCreateChallenge() {
   return useMutation({
     mutationFn: (payload: CreateChallengePayload) => createChallengeRequest(token!, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["challenges"] }),
+  });
+}
+
+export function useUpdateChallenge(id: number) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { bannerUrl: string | null }) => updateChallengeRequest(token!, id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenge", id] });
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
   });
 }

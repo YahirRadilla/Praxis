@@ -66,6 +66,7 @@ export interface ClassGroup {
   _count?: ClassGroupCounts;
   // Absent for an anonymous requester.
   viewer?: ClassGroupViewer;
+  bannerUrl?: string | null;
 }
 
 export interface CreateClassGroupPayload {
@@ -73,7 +74,7 @@ export interface CreateClassGroupPayload {
   description: string;
 }
 
-export type UpdateClassGroupPayload = Partial<CreateClassGroupPayload>;
+export type UpdateClassGroupPayload = Partial<CreateClassGroupPayload> & { bannerUrl?: string | null };
 
 export interface CreateClassGroupResourcePayload {
   type: ClassGroupResourceType;

@@ -2,7 +2,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProjectRow from "../components/ProjectRow";
-import { useChallenge } from "../hooks/useChallenges";
+import BannerUploader from "../components/BannerUploader";
+import { useAuth } from "../context/AuthContext";
+import { useChallenge, useUpdateChallenge } from "../hooks/useChallenges";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 import { getChipTextColor } from "../utils/chipTextColor";
 
@@ -10,6 +12,8 @@ function RetoDetalle() {
   const { id } = useParams();
   const challengeId = Number(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const updateChallenge = useUpdateChallenge(challengeId);
 
   const { data: challenge, isLoading, isError, refetch } = useChallenge(challengeId);
 
@@ -49,6 +53,7 @@ function RetoDetalle() {
   }
 
   const mainSdg = challenge.sdgs[0]?.sdg;
+  const canEditBanner = user?.id === challenge.organizationId;
 
   return (
     <div className="min-h-dvh flex flex-col bg-surface-ground">
@@ -61,6 +66,17 @@ function RetoDetalle() {
           }}
           className="relative rounded-2xl overflow-hidden h-[220px] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_20px_44px_-20px_rgba(20,22,26,0.35)]"
         >
+          {challenge.bannerUrl && (
+            <img src={challenge.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          {canEditBanner && (
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+              <BannerUploader
+                hasBanner={!!challenge.bannerUrl}
+                onSave={(bannerUrl) => updateChallenge.mutateAsync({ bannerUrl })}
+              />
+            </div>
+          )}
           <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(10,12,10,0.82),rgba(10,12,10,0)_60%)]" />
           <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col gap-2.5">
             <div className="flex items-center gap-2 flex-wrap">

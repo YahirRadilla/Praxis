@@ -92,11 +92,21 @@ function Retos() {
                   }}
                   className="relative h-[90px] flex items-start gap-1.5 p-2.5 flex-wrap"
                 >
+                  {challenge.bannerUrl && (
+                    <>
+                      <img
+                        src={challenge.bannerUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,12,10,0.35),rgba(10,12,10,0)_60%)]" />
+                    </>
+                  )}
                   {challenge.sdgs.map(({ sdg }) => (
                     <span
                       key={sdg.id}
                       style={{ backgroundColor: sdg.colorHex, color: getChipTextColor(sdg.colorHex) }}
-                      className="rounded-full px-2.5 py-1 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+                      className="relative rounded-full px-2.5 py-1 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
                     >
                       ODS {String(sdg.id).padStart(2, "0")}
                     </span>

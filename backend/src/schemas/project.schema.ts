@@ -30,6 +30,13 @@ export const updateProjectSchema = z
     problemStatement: z.string().min(1).optional(),
     objectives: z.string().min(1).optional(),
     extendedInfo: z.string().nullable().optional(),
+    bannerUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((u) => /^https?:\/\//i.test(u), "URL inválida")
+      .nullable()
+      .optional(),
     sdgIds: z.array(z.number().int().min(1).max(17)).optional(),
     categoryIds: z.array(z.number().int()).min(1).max(3).optional(),
     visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),

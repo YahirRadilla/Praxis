@@ -15,6 +15,7 @@ export interface Challenge {
   sdgs: { challengeId: number; sdgId: number; sdg: Sdg }[];
   categories: { challengeId: number; categoryId: number; category: Category }[];
   projects: Project[];
+  bannerUrl?: string | null;
 }
 
 export interface CreateChallengePayload {

@@ -3,11 +3,12 @@ import {
   createChallenge as createChallengeRepo,
   findChallengeById,
   listChallenges as listChallengesRepo,
+  updateChallenge as updateChallengeRepo,
   type CreateChallengeData,
   type ListChallengesFilters,
 } from "../repositories/challenge.repository";
 import { HttpError } from "../types/http-error";
-import type { CreateChallengeInput } from "../schemas/challenge.schema";
+import type { CreateChallengeInput, UpdateChallengeInput } from "../schemas/challenge.schema";
 
 // Retos are public, so the publisher's contact email only makes sense to
 // expose when it's an ORGANIZATION's institutional address (plan decision
@@ -46,4 +47,17 @@ export async function getChallenge(id: number) {
     throw new HttpError(404, "Reto no encontrado.");
   }
   return hideNonOrganizationEmail(challenge);
+}
+
+export async function updateChallenge(id: number, userId: number, input: UpdateChallengeInput) {
+  const challenge = await findChallengeById(id);
+  if (!challenge) {
+    throw new HttpError(404, "Reto no encontrado.");
+  }
+  if (challenge.organizationId !== userId) {
+    throw new HttpError(403, "Solo quien publicó el reto puede modificarlo.");
+  }
+
+  const updated = await updateChallengeRepo(id, input);
+  return hideNonOrganizationEmail(updated);
 }

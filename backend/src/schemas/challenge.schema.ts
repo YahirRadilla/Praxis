@@ -39,5 +39,17 @@ export const listChallengesQuerySchema = z.object({
     ),
 });
 
+export const updateChallengeSchema = z
+  .object({
+    bannerUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((u) => /^https?:\/\//i.test(u), "URL inválida")
+      .nullable(),
+  })
+  .strict();
+
 export type CreateChallengeInput = z.infer<typeof createChallengeSchema>;
 export type ListChallengesQuery = z.infer<typeof listChallengesQuerySchema>;
+export type UpdateChallengeInput = z.infer<typeof updateChallengeSchema>;

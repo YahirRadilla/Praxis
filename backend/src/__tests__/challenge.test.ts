@@ -249,3 +249,117 @@ describe("Bug fix: challenges' public endpoints don't leak private project field
     ]);
   });
 });
+
+describe("challenge bannerUrl: PATCH /api/challenges/:id", () => {
+  it("lets the publisher (organizationId match) PATCH bannerUrl", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner Patch");
+    const sdgId = await ensureSdg();
+    const challenge = await request(app)
+      .post("/api/challenges")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({
+        title: `Reto banner ${Date.now()}`,
+        description: "Reto para probar el banner.",
+        sdgIds: [sdgId],
+      });
+    expect(challenge.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/challenges/${challenge.body.id}`)
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(200);
+    expect(res.body.bannerUrl).toBe("https://example.com/banner.png");
+  });
+
+  it("rejects a PATCH from a different authenticated user with 403", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner Other");
+    const other = await registerUser("ORGANIZATION", "Org Banner Intruder");
+    const sdgId = await ensureSdg();
+    const challenge = await request(app)
+      .post("/api/challenges")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({
+        title: `Reto banner ajeno ${Date.now()}`,
+        description: "No debería poder modificarse por otro.",
+        sdgIds: [sdgId],
+      });
+    expect(challenge.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/challenges/${challenge.body.id}`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a PATCH on a nonexistent challenge id", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner Missing");
+
+    const res = await request(app)
+      .patch("/api/challenges/999999")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects a PATCH with an extra unknown key, because the schema is strict", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner Strict");
+    const sdgId = await ensureSdg();
+    const challenge = await request(app)
+      .post("/api/challenges")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({
+        title: `Reto banner estricto ${Date.now()}`,
+        description: "Reto para probar la validación estricta.",
+        sdgIds: [sdgId],
+      });
+    expect(challenge.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/challenges/${challenge.body.id}`)
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png", title: "Intento de cambiar otra cosa" });
+    expect(res.status).toBe(400);
+  });
+
+  it("requires authentication: no token returns 401", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner Auth");
+    const sdgId = await ensureSdg();
+    const challenge = await request(app)
+      .post("/api/challenges")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({
+        title: `Reto banner sin auth ${Date.now()}`,
+        description: "Reto para probar que requiere autenticación.",
+        sdgIds: [sdgId],
+      });
+    expect(challenge.status).toBe(201);
+
+    const res = await request(app)
+      .patch(`/api/challenges/${challenge.body.id}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/challenges (list) includes bannerUrl in each item's shape", async () => {
+    const organization = await registerUser("ORGANIZATION", "Org Banner List");
+    const sdgId = await ensureSdg();
+    const challenge = await request(app)
+      .post("/api/challenges")
+      .set("Authorization", `Bearer ${organization.token}`)
+      .send({
+        title: `Reto banner lista ${Date.now()}`,
+        description: "Reto para probar que la lista incluye bannerUrl.",
+        sdgIds: [sdgId],
+      });
+    expect(challenge.status).toBe(201);
+    expect(challenge.body.bannerUrl).toBeNull();
+
+    const res = await request(app).get("/api/challenges").query({ q: "banner lista" });
+    expect(res.status).toBe(200);
+    const found = res.body.find((c: any) => c.id === challenge.body.id);
+    expect(found).toHaveProperty("bannerUrl");
+    expect(found.bannerUrl).toBeNull();
+  });
+});

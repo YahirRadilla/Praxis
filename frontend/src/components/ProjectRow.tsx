@@ -9,7 +9,7 @@ import { getChipTextColor } from "../utils/chipTextColor";
 // `Project` with owner/sdgs/categories/description. Every field beyond those
 // four is optional here so the row degrades gracefully instead of throwing.
 type ProjectRowData = Pick<Project, "id" | "name" | "visibility" | "archived"> &
-  Partial<Pick<Project, "description" | "owner" | "sdgs" | "categories">>;
+  Partial<Pick<Project, "description" | "owner" | "sdgs" | "categories" | "bannerUrl">>;
 
 function ProjectRow({ project }: { project: ProjectRowData }) {
   const mainSdg = project.sdgs?.[0]?.sdg;
@@ -23,12 +23,18 @@ function ProjectRow({ project }: { project: ProjectRowData }) {
     >
       <div
         style={{ background: bandColor ? `linear-gradient(160deg, ${bandColor}, ${bandColor}99)` : "#19486A" }}
-        className="w-[120px] shrink-0 flex items-end p-2.5"
+        className="relative w-[120px] shrink-0 flex items-end p-2.5"
       >
+        {project.bannerUrl && (
+          <>
+            <img src={project.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(10,12,10,0.5),rgba(10,12,10,0)_60%)]" />
+          </>
+        )}
         {mainCategory ? (
           <span
             style={{ backgroundColor: mainCategory.colorHex, color: getChipTextColor(mainCategory.colorHex) }}
-            className="rounded-full px-2.5 py-1.5 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+            className="relative rounded-full px-2.5 py-1.5 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
           >
             {mainCategory.name}
           </span>
@@ -36,7 +42,7 @@ function ProjectRow({ project }: { project: ProjectRowData }) {
           mainSdg && (
             <span
               style={{ backgroundColor: mainSdg.colorHex, color: getChipTextColor(mainSdg.colorHex) }}
-              className="rounded-full px-2.5 py-1.5 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+              className="relative rounded-full px-2.5 py-1.5 text-[10px] font-bold font-data shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
             >
               ODS {String(mainSdg.id).padStart(2, "0")}
             </span>

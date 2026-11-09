@@ -13,6 +13,9 @@ function ProjectHeaderBand({ project, actions }: { project: Project; actions?: R
         style={{ background: `linear-gradient(135deg, ${bandColor}, ${bandColor}CC)` }}
         className="relative rounded-2xl overflow-hidden min-h-[260px] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_20px_44px_-20px_rgba(20,22,26,0.35)]"
       >
+        {project.bannerUrl && (
+          <img src={project.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(10,12,10,0.82),rgba(10,12,10,0)_60%)]" />
 
         <div className="relative z-10 flex flex-col min-h-[260px] p-6 gap-4">

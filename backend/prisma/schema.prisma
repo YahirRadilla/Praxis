@@ -142,6 +142,7 @@ model Challenge {
   title       String
   description String
   deadline    DateTime?
+  bannerUrl   String?
   createdAt   DateTime  @default(now())
 
   organizationId Int
@@ -187,6 +188,7 @@ model ClassGroup {
   id          Int      @id @default(autoincrement())
   name        String
   description String
+  bannerUrl   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -248,6 +250,7 @@ model Project {
   // fit the structured fields above) shown in the Anexos tab. Editable by
   // any project member, unlike the rest of this model's fields.
   extendedInfo     String?
+  bannerUrl        String?
   visibility       ProjectVisibility @default(PRIVATE)
   archived         Boolean           @default(false)
   archivedAt       DateTime?

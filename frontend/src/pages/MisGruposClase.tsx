@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
 import { useJoinedClassGroups, useMyClassGroups, useSearchClassGroups } from "../hooks/useClassGroups";
 import type { ClassGroup } from "../types/class-group";
-import { classGroupCounts } from "../utils/classGroup";
+import { classGroupCounts, CLASS_GROUP_BAND_COLOR } from "../utils/classGroup";
 import { CARD_SHADOW, PRIMARY_BUTTON } from "../utils/statusStyles";
 import { pluralize } from "../utils/text";
 
@@ -13,16 +14,26 @@ function ClassGroupCard({ classGroup }: { classGroup: ClassGroup }) {
   return (
     <Link
       to={`/grupos-clase/${classGroup.id}`}
-      className={`flex flex-col gap-1.5 bg-paper-raised border border-rule rounded-xl p-4 ${CARD_SHADOW} hover:shadow-[0_1px_2px_rgba(20,22,26,0.04),0_16px_36px_-14px_rgba(20,22,26,0.28)] hover:-translate-y-0.5`}
+      className={`flex flex-col overflow-hidden bg-paper-raised border border-rule rounded-xl ${CARD_SHADOW} hover:shadow-[0_1px_2px_rgba(20,22,26,0.04),0_16px_36px_-14px_rgba(20,22,26,0.28)] hover:-translate-y-0.5`}
     >
-      <h3 className="font-heading text-[15px] font-semibold text-ink m-0">{classGroup.name}</h3>
-      <p className="text-[12.5px] text-ink-soft m-0 line-clamp-2">{classGroup.description}</p>
-      <p className="text-[11.5px] text-ink-faint m-0">{classGroup.teacher.name}</p>
-      <p className="text-[11.5px] text-ink-faint m-0">
-        {counts.resources} {pluralize(counts.resources, "documento", "documentos")} ·{" "}
-        {counts.members} {pluralize(counts.members, "alumno", "alumnos")} ·{" "}
-        {counts.projects} {pluralize(counts.projects, "proyecto", "proyectos")}
-      </p>
+      <div
+        style={{ background: `linear-gradient(150deg, ${CLASS_GROUP_BAND_COLOR}, ${CLASS_GROUP_BAND_COLOR}99)` }}
+        className="relative h-[90px]"
+      >
+        {classGroup.bannerUrl && (
+          <img src={classGroup.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5 p-4">
+        <h3 className="font-heading text-[15px] font-semibold text-ink m-0">{classGroup.name}</h3>
+        <p className="text-[12.5px] text-ink-soft m-0 line-clamp-2">{classGroup.description}</p>
+        <p className="text-[11.5px] text-ink-faint m-0">{classGroup.teacher.name}</p>
+        <p className="text-[11.5px] text-ink-faint m-0">
+          {counts.resources} {pluralize(counts.resources, "documento", "documentos")} ·{" "}
+          {counts.members} {pluralize(counts.members, "alumno", "alumnos")} ·{" "}
+          {counts.projects} {pluralize(counts.projects, "proyecto", "proyectos")}
+        </p>
+      </div>
     </Link>
   );
 }
@@ -128,6 +139,8 @@ function MisGruposClase() {
           </section>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

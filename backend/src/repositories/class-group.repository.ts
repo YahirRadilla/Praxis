@@ -14,7 +14,13 @@ const memberUserSelectWithEmail = { id: true, name: true, email: true, accountTy
 // Only minimal, safe fields for the projects a ClassGroup groups — unlike
 // `challengeInclude.projects`, this never reuses the full `projectInclude`
 // (which would leak private-project detail on this public endpoint).
-const classGroupProjectSelect = { id: true, name: true, visibility: true, archived: true } as const;
+const classGroupProjectSelect = {
+  id: true,
+  name: true,
+  visibility: true,
+  archived: true,
+  bannerUrl: true,
+} as const;
 
 const classGroupResourceInclude = {
   creator: { select: { id: true, name: true } },
@@ -43,6 +49,7 @@ const classGroupPreviewSelect = {
   id: true,
   name: true,
   description: true,
+  bannerUrl: true,
   createdAt: true,
   updatedAt: true,
   teacher: { select: teacherSelect },
@@ -186,6 +193,7 @@ export function findClassGroupByIdWithEmail(id: number) {
 export interface UpdateClassGroupData {
   name?: string;
   description?: string;
+  bannerUrl?: string | null;
 }
 
 export function updateClassGroup(id: number, data: UpdateClassGroupData) {

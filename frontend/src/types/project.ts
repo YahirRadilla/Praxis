@@ -75,6 +75,7 @@ export interface Project {
   classGroup: { id: number; name: string } | null;
   viewer?: ProjectViewer;
   pendingEvaluatorInvites?: PendingEvaluatorInvites;
+  bannerUrl?: string | null;
 }
 
 export interface CreateProjectPayload {

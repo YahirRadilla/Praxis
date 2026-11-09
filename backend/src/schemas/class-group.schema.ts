@@ -11,6 +11,13 @@ export const updateClassGroupSchema = z
   .object({
     name: z.string().min(1, "Completa este campo").optional(),
     description: z.string().min(1, "Completa este campo").optional(),
+    bannerUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((u) => /^https?:\/\//i.test(u), "URL inválida")
+      .nullable()
+      .optional(),
   })
   .strict();
 

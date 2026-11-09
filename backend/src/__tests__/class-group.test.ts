@@ -448,3 +448,51 @@ describe("linking a project to a class group requires membership (or ownership)"
     expect(project.status).toBe(404);
   });
 });
+
+describe("class group bannerUrl: PATCH /api/class-groups/:id", () => {
+  it("lets the owning teacher PATCH bannerUrl", async () => {
+    const teacher = await registerUser("TEACHER", "Teacher Banner Owner");
+    const created = await createClassGroupFor(teacher.token);
+
+    const res = await request(app)
+      .patch(`/api/class-groups/${created.body.id}`)
+      .set("Authorization", `Bearer ${teacher.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(200);
+    expect(res.body.bannerUrl).toBe("https://example.com/banner.png");
+  });
+
+  it("rejects a PATCH from a non-owner teacher with 403", async () => {
+    const owner = await registerUser("TEACHER", "Teacher Banner Owner2");
+    const other = await registerUser("TEACHER", "Teacher Banner Intruder");
+    const created = await createClassGroupFor(owner.token);
+
+    const res = await request(app)
+      .patch(`/api/class-groups/${created.body.id}`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(403);
+  });
+
+  it("includes bannerUrl in an anonymous/public preview GET and in a search response", async () => {
+    const teacher = await registerUser("TEACHER", "Teacher Banner Preview");
+    const unique = Date.now();
+    const created = await createClassGroupFor(teacher.token, { name: `Grupo Banner ${unique}` });
+
+    await request(app)
+      .patch(`/api/class-groups/${created.body.id}`)
+      .set("Authorization", `Bearer ${teacher.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+
+    const previewRes = await request(app).get(`/api/class-groups/${created.body.id}`);
+    expect(previewRes.status).toBe(200);
+    expect(previewRes.body.bannerUrl).toBe("https://example.com/banner.png");
+
+    const searchRes = await request(app)
+      .get("/api/class-groups")
+      .query({ q: `Grupo Banner ${unique}` });
+    expect(searchRes.status).toBe(200);
+    expect(searchRes.body).toHaveLength(1);
+    expect(searchRes.body[0].bannerUrl).toBe("https://example.com/banner.png");
+  });
+});

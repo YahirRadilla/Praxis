@@ -220,6 +220,81 @@ describe("project lifecycle: visibility and archived", () => {
     expect(allowed.status).toBe(200);
     expect(allowed.body.visibility).toBe("PRIVATE");
   });
+
+  it("rejects a bannerUrl PATCH on an archived project with 409, same as any other field", async () => {
+    const owner = await registerUser("STUDENT", "Owner Archived Banner");
+    const project = await createPublishedProject(owner.token);
+
+    await request(app)
+      .post(`/api/projects/${project.id}/archive`)
+      .set("Authorization", `Bearer ${owner.token}`);
+
+    const res = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe("project bannerUrl: PATCH /api/projects/:id", () => {
+  it("lets the owner set bannerUrl, and a follow-up GET reflects it", async () => {
+    const owner = await registerUser("STUDENT", "Owner Banner Set");
+    const project = await createPublishedProject(owner.token);
+
+    const patched = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(patched.status).toBe(200);
+    expect(patched.body.bannerUrl).toBe("https://example.com/banner.png");
+
+    const getRes = await request(app).get(`/api/projects/${project.id}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.bannerUrl).toBe("https://example.com/banner.png");
+  });
+
+  it("rejects a PATCH from a non-owner with 403", async () => {
+    const owner = await registerUser("STUDENT", "Owner Banner Forbidden");
+    const other = await registerUser("STUDENT", "Other Banner Forbidden");
+    const project = await createPublishedProject(owner.token);
+
+    const res = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a non-URL string with 400", async () => {
+    const owner = await registerUser("STUDENT", "Owner Banner BadUrl");
+    const project = await createPublishedProject(owner.token);
+
+    const res = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ bannerUrl: "not-a-url" });
+    expect(res.status).toBe(400);
+  });
+
+  it("clears a previously-set bannerUrl with null", async () => {
+    const owner = await registerUser("STUDENT", "Owner Banner Clear");
+    const project = await createPublishedProject(owner.token);
+
+    const set = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ bannerUrl: "https://example.com/banner.png" });
+    expect(set.status).toBe(200);
+    expect(set.body.bannerUrl).toBe("https://example.com/banner.png");
+
+    const cleared = await request(app)
+      .patch(`/api/projects/${project.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ bannerUrl: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.bannerUrl).toBeNull();
+  });
 });
 
 describe("WU-07: viewer permissions on project responses", () => {

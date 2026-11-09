@@ -7,7 +7,13 @@ import { prisma } from "./prisma-client";
 // ones: reusing the full `projectInclude` here would leak every field
 // (description, problemStatement, team, etc.) of a private project to
 // anyone, just because it's linked to a public Reto.
-const challengeProjectSelect = { id: true, name: true, visibility: true, archived: true } as const;
+const challengeProjectSelect = {
+  id: true,
+  name: true,
+  visibility: true,
+  archived: true,
+  bannerUrl: true,
+} as const;
 
 export const challengeInclude = {
   organization: { select: { id: true, name: true, email: true, accountType: true } },
@@ -20,6 +26,7 @@ export interface CreateChallengeData {
   title: string;
   description: string;
   deadline?: Date;
+  bannerUrl?: string | null;
   organizationId: number;
   sdgIds?: number[];
   categoryIds?: number[];
@@ -39,6 +46,10 @@ export function createChallenge(data: CreateChallengeData) {
 
 export function findChallengeById(id: number) {
   return prisma.challenge.findUnique({ where: { id }, include: challengeInclude });
+}
+
+export function updateChallenge(id: number, data: { bannerUrl: string | null }) {
+  return prisma.challenge.update({ where: { id }, data, include: challengeInclude });
 }
 
 export interface ListChallengesFilters {

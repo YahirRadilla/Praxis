@@ -164,6 +164,7 @@ export type UpdateProjectPayload = Partial<
 > & {
   challengeId?: number | null;
   extendedInfo?: string | null;
+  bannerUrl?: string | null;
 };
 
 export function updateProjectRequest(token: string, id: number, payload: UpdateProjectPayload) {
@@ -577,6 +578,14 @@ export function listChallengesRequest(params: ListChallengesParams = {}) {
 
 export function getChallengeRequest(id: number) {
   return request<Challenge>(`/api/challenges/${id}`);
+}
+
+export function updateChallengeRequest(
+  token: string,
+  id: number,
+  payload: { bannerUrl: string | null },
+) {
+  return request<Challenge>(`/api/challenges/${id}`, { method: "PATCH", token, body: payload });
 }
 
 // --- Class groups (Grupos de clase) --------------------------------------------

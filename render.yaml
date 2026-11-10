@@ -27,6 +27,22 @@ services:
       # Credentials, OAuth 2.0 Client ID used by this app.
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Cloudflare R2 (S3-compatible object storage for user-uploaded files).
+      # Render's free plan has no persistent disk, so uploads are stored
+      # here instead of on the container's ephemeral filesystem. Get these
+      # from the Cloudflare dashboard: R2 > Manage R2 API Tokens for the
+      # account id/access key/secret, and the bucket's Settings tab for its
+      # name and public r2.dev (or custom domain) URL.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
 
   - type: web
     name: praxis-frontend

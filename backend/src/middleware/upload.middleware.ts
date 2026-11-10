@@ -1,12 +1,8 @@
-import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import multer from "multer";
 import type { Request, Response, NextFunction } from "express";
 import { HttpError } from "../types/http-error";
-
-const uploadsDir = path.join(__dirname, "../../uploads");
-fs.mkdirSync(uploadsDir, { recursive: true });
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -21,33 +17,28 @@ const ALLOWED_MIME_TYPES = [
 
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".mp4"];
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => {
-    callback(null, uploadsDir);
-  },
-  filename: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      callback(new Error("Tipo de archivo no permitido."), "");
-      return;
-    }
-    callback(null, `${crypto.randomUUID()}${extension}`);
-  },
-});
-
 function fileFilter(_req: Request, file: Express.Multer.File, callback: multer.FileFilterCallback) {
-  if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  const extension = path.extname(file.originalname).toLowerCase();
+  if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(extension)) {
     callback(new Error("Tipo de archivo no permitido. Solo se aceptan imágenes, PDF, Word y video MP4."));
     return;
   }
   callback(null, true);
 }
 
+// Buffered in memory instead of written to disk: the file never touches the
+// server's (ephemeral) filesystem — the controller uploads the buffer
+// straight to R2.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 },
 });
+
+export function generateStorageKey(originalName: string): string {
+  const extension = path.extname(originalName).toLowerCase();
+  return `${crypto.randomUUID()}${extension}`;
+}
 
 export function uploadSingleFile(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (error: unknown) => {

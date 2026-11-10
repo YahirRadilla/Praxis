@@ -728,6 +728,102 @@ async function main() {
     "Me gustaría colaborar con el diseño de sensores IoT para medir temperatura en campo.",
   );
 
+  // --- Additional projects (feed richness for the demo) -------------------
+
+  console.log("[demo] Seeding additional demo projects...");
+
+  const telemedicineProject = await findOrCreateProject(
+    "Telemedicina comunitaria para zonas rurales de BCS",
+    {
+      name: "Telemedicina comunitaria para zonas rurales de BCS",
+      description:
+        "Aplicación de telemedicina que conecta clínicas comunitarias de zonas rurales con médicos generales para consultas de seguimiento a distancia.",
+      problemStatement:
+        "Las comunidades rurales de Baja California Sur tienen que viajar horas para una consulta de seguimiento, lo que provoca abandono de tratamientos.",
+      objectives: "Validar el flujo de consulta remota con al menos una clínica comunitaria piloto.",
+      visibility: ProjectVisibility.PUBLIC,
+      bannerUrl: "https://images.unsplash.com/photo-1732025407668-2e1c2f67f810?w=1200&q=75&fit=crop",
+      owner: { connect: { id: diego.id } },
+      teacher: { connect: { id: valeria.id } },
+    },
+  );
+
+  const roboticsTherapyProject = await findOrCreateProject(
+    "Brazo robótico de bajo costo para terapia física",
+    {
+      name: "Brazo robótico de bajo costo para terapia física",
+      description:
+        "Dispositivo robótico de bajo costo para asistir ejercicios de terapia física de mano y muñeca en pacientes con movilidad reducida.",
+      problemStatement:
+        "El equipo de rehabilitación robótica es inaccesible para clínicas públicas de la región por su costo.",
+      objectives: "Construir y probar un prototipo funcional con al menos un paciente voluntario.",
+      visibility: ProjectVisibility.PUBLIC,
+      bannerUrl: "https://images.unsplash.com/photo-1732025407668-2e1c2f67f810?w=1200&q=75&fit=crop",
+      owner: { connect: { id: jorge.id } },
+      teacher: { connect: { id: valeria.id } },
+    },
+  );
+
+  const fisheriesDataProject = await findOrCreateProject(
+    "Tablero de datos abiertos de pesca sustentable en La Paz",
+    {
+      name: "Tablero de datos abiertos de pesca sustentable en La Paz",
+      description:
+        "Tablero público que concentra los datos de captura de cooperativas pesqueras locales para apoyar decisiones de manejo sustentable.",
+      problemStatement:
+        "Las cooperativas pesqueras registran su captura en papel y no existe una fuente consolidada que permita detectar sobreexplotación a tiempo.",
+      objectives: "Publicar un tablero funcional con datos de al menos tres cooperativas pesqueras.",
+      visibility: ProjectVisibility.PUBLIC,
+      bannerUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1200&q=75&fit=crop",
+      owner: { connect: { id: luis.id } },
+      teacher: { connect: { id: monica.id } },
+    },
+  );
+
+  const mangroveProject = await findOrCreateProject(
+    "Restauración de manglares en la Ensenada de La Paz",
+    {
+      name: "Restauración de manglares en la Ensenada de La Paz",
+      description:
+        "Reforestación participativa de manglar rojo en zonas degradadas de la Ensenada de La Paz, con monitoreo de sobrevivencia de los propágulos.",
+      problemStatement:
+        "La pérdida histórica de manglar en la ensenada ha reducido la protección costera y el hábitat de especies juveniles de interés pesquero.",
+      objectives: "Reforestar un sitio piloto y documentar la tasa de sobrevivencia a ocho semanas.",
+      visibility: ProjectVisibility.PUBLIC,
+      bannerUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1200&q=75&fit=crop",
+      owner: { connect: { id: renata.id } },
+      teacher: { connect: { id: monica.id } },
+    },
+  );
+
+  console.log("[demo] Linking additional projects to SDGs and categories...");
+  await linkSdg(telemedicineProject.id, 3); // Salud y bienestar
+  await linkCategory(telemedicineProject.id, 1); // Tecnología y Computación
+
+  await linkSdg(roboticsTherapyProject.id, 3); // Salud y bienestar
+  await linkSdg(roboticsTherapyProject.id, 10); // Reducción de las desigualdades
+  await linkCategory(roboticsTherapyProject.id, 4); // Electrónica y Robótica
+
+  await linkSdg(fisheriesDataProject.id, 14); // Vida submarina
+  await linkCategory(fisheriesDataProject.id, 7); // Pesca y Acuicultura
+
+  await linkSdg(mangroveProject.id, 15); // Vida de ecosistemas terrestres
+  await linkSdg(mangroveProject.id, 13); // Acción por el clima
+  await linkCategory(mangroveProject.id, 6); // Ciencias del Mar y Costeras
+
+  console.log("[demo] Wiring evaluator links for additional projects...");
+  await prisma.project.update({ where: { id: telemedicineProject.id }, data: { teacherId: valeria.id } });
+  await ensureEvaluatorLink(telemedicineProject.id, valeria.id);
+
+  await prisma.project.update({ where: { id: roboticsTherapyProject.id }, data: { teacherId: valeria.id } });
+  await ensureEvaluatorLink(roboticsTherapyProject.id, valeria.id);
+
+  await prisma.project.update({ where: { id: fisheriesDataProject.id }, data: { teacherId: monica.id } });
+  await ensureEvaluatorLink(fisheriesDataProject.id, monica.id);
+
+  await prisma.project.update({ where: { id: mangroveProject.id }, data: { teacherId: monica.id } });
+  await ensureEvaluatorLink(mangroveProject.id, monica.id);
+
   // --- Kanban board for the reef monitoring project -----------------------
 
   console.log("[demo] Seeding project labels for the reef monitoring project...");
@@ -894,6 +990,41 @@ async function main() {
     ana.id,
     "Terminamos el primer cruce de datos satelitales con los reportes ciudadanos de tres colonias piloto. La próxima semana integramos el mapa de calor a la beta.",
     { postedToFeed: true, validated: false },
+  );
+
+  await ensureProgressUpdate(
+    bioclimaticHousingProject.id,
+    mariana.id,
+    "Terminamos el prototipo a escala del muro bioclimático y lo dejamos expuesto a sol directo para medir la diferencia de temperatura interior durante una semana.",
+    { postedToFeed: true, validated: true },
+  );
+
+  await ensureProgressUpdate(
+    telemedicineProject.id,
+    diego.id,
+    "Completamos las primeras 10 consultas piloto con la clínica comunitaria de Todos Santos. El siguiente sprint integra recordatorios por SMS para pacientes sin conexión constante.",
+    { postedToFeed: true, validated: false },
+  );
+
+  await ensureProgressUpdate(
+    roboticsTherapyProject.id,
+    jorge.id,
+    "Terminamos el prototipo del actuador del brazo robótico y lo probamos con el primer paciente voluntario en terapia de mano.",
+    { postedToFeed: true, validated: true },
+  );
+
+  await ensureProgressUpdate(
+    fisheriesDataProject.id,
+    luis.id,
+    "Publicamos el primer tablero con datos de captura de tres cooperativas pesqueras de La Paz. Ya se puede filtrar por especie y temporada.",
+    { postedToFeed: true, validated: false },
+  );
+
+  await ensureProgressUpdate(
+    mangroveProject.id,
+    renata.id,
+    "Sembramos el primer lote de 500 propágulos de mangle rojo en la zona piloto de la Ensenada de La Paz. En dos semanas medimos la tasa de sobrevivencia.",
+    { postedToFeed: true, validated: true },
   );
 
   // --- Dictámenes -----------------------------------------------------

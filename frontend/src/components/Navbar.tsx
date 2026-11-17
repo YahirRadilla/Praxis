@@ -60,7 +60,7 @@ function Navbar() {
 
   return (
     <>
-      <nav className="w-full bg-paper-raised border-b border-rule px-4 md:px-8 py-3 flex items-center justify-between gap-4 md:gap-8">
+      <nav className="w-full bg-paper-raised border-b border-rule px-4 lg:px-8 py-3 flex items-center justify-between gap-4 lg:gap-8">
         <Link to="/inicio" className="flex items-center gap-2.5 shrink-0">
           <span className="relative w-[34px] h-[34px] rounded-full border-4 border-ink">
             <span className="absolute top-px -right-px w-2.5 h-2.5 rounded-full bg-paper-raised border-[1.8px] border-ink" />
@@ -68,7 +68,7 @@ function Navbar() {
           <span className="font-heading text-[17px] font-bold text-ink">Praxis</span>
         </Link>
 
-        <form onSubmit={handleSearch} className="hidden md:block flex-1 max-w-[420px]">
+        <form onSubmit={handleSearch} className="hidden lg:block flex-1 max-w-[420px]">
           <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5 focus-within:border-accent-primary focus-within:ring-2 focus-within:ring-accent-primary/30">
             <svg width="16" height="16" viewBox="0 0 256 256" fill="none" className="text-ink-faint shrink-0">
               <circle cx="112" cy="112" r="80" stroke="currentColor" strokeWidth="16" />
@@ -85,7 +85,7 @@ function Navbar() {
           </div>
         </form>
 
-        <div className="hidden md:flex items-center gap-6 shrink-0">
+        <div className="hidden lg:flex items-center gap-6 shrink-0">
           <NavLink to="/inicio" className={navLinkClass}>
             Inicio
           </NavLink>
@@ -176,7 +176,7 @@ function Navbar() {
           )}
         </div>
 
-        <div className="flex md:hidden items-center gap-1 shrink-0">
+        <div className="flex lg:hidden items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
@@ -300,7 +300,7 @@ function Navbar() {
       {mobileSearchOpen && (
         <form
           onSubmit={handleMobileSearch}
-          className="md:hidden w-full bg-paper-raised border-b border-rule px-4 py-2.5"
+          className="lg:hidden w-full bg-paper-raised border-b border-rule px-4 py-2.5"
         >
           <div className="flex items-center gap-2 border border-rule rounded-full bg-paper px-4 py-2.5 focus-within:border-accent-primary focus-within:ring-2 focus-within:ring-accent-primary/30">
             <svg width="16" height="16" viewBox="0 0 256 256" fill="none" className="text-ink-faint shrink-0">

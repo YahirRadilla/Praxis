@@ -1091,6 +1091,153 @@ async function main() {
     data: { classGroupId: classGroup.id },
   });
 
+  console.log("[demo] Seeding additional class groups for a richer Grupos de clase screen...");
+
+  const existingRoboticsGroup = await prisma.classGroup.findFirst({
+    where: { name: "Electrónica Aplicada y Robótica", teacherId: valeria.id },
+  });
+  const roboticsClassGroup =
+    existingRoboticsGroup ??
+    (await prisma.classGroup.create({
+      data: {
+        name: "Electrónica Aplicada y Robótica",
+        description:
+          "Grupo de Ingeniería en Electrónica enfocado en proyectos de robótica y sistemas embebidos con aplicación social.",
+        bannerUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=75&fit=crop",
+        teacherId: valeria.id,
+      },
+    }));
+  await ensureClassGroupMember(roboticsClassGroup.id, jorge.id);
+  await ensureClassGroupMember(roboticsClassGroup.id, diego.id);
+  await ensureClassGroupMember(roboticsClassGroup.id, ana.id);
+  const existingRoboticsResource = await prisma.classGroupResource.findFirst({
+    where: { classGroupId: roboticsClassGroup.id, label: "Rúbrica de evaluación de prototipos" },
+  });
+  if (!existingRoboticsResource) {
+    await prisma.classGroupResource.create({
+      data: {
+        classGroupId: roboticsClassGroup.id,
+        creatorId: valeria.id,
+        type: EvidenceType.LINK,
+        url: "https://example.com/rubrica-prototipos.pdf",
+        label: "Rúbrica de evaluación de prototipos",
+        description: "Criterios para evaluar el avance de los prototipos a lo largo del semestre.",
+      },
+    });
+  }
+  await prisma.project.update({
+    where: { id: roboticsTherapyProject.id },
+    data: { classGroupId: roboticsClassGroup.id },
+  });
+
+  const existingMarineGroup = await prisma.classGroup.findFirst({
+    where: { name: "Biología Marina y Conservación Costera", teacherId: monica.id },
+  });
+  const marineClassGroup =
+    existingMarineGroup ??
+    (await prisma.classGroup.create({
+      data: {
+        name: "Biología Marina y Conservación Costera",
+        description:
+          "Grupo de Biología Marina que desarrolla proyectos de conservación de ecosistemas costeros en Baja California Sur.",
+        bannerUrl: "https://images.unsplash.com/photo-1518399681705-1393cce5fb82?w=1200&q=75&fit=crop",
+        teacherId: monica.id,
+      },
+    }));
+  await ensureClassGroupMember(marineClassGroup.id, sofia.id);
+  await ensureClassGroupMember(marineClassGroup.id, renata.id);
+  await ensureClassGroupMember(marineClassGroup.id, luis.id);
+  const existingMarineResource = await prisma.classGroupResource.findFirst({
+    where: { classGroupId: marineClassGroup.id, label: "Protocolo de monitoreo de campo" },
+  });
+  if (!existingMarineResource) {
+    await prisma.classGroupResource.create({
+      data: {
+        classGroupId: marineClassGroup.id,
+        creatorId: monica.id,
+        type: EvidenceType.LINK,
+        url: "https://example.com/protocolo-monitoreo-campo.pdf",
+        label: "Protocolo de monitoreo de campo",
+        description: "Protocolo compartido para estandarizar las salidas de monitoreo del semestre.",
+      },
+    });
+  }
+  await prisma.project.update({
+    where: { id: mangroveProject.id },
+    data: { classGroupId: marineClassGroup.id },
+  });
+
+  const existingFisheriesGroup = await prisma.classGroup.findFirst({
+    where: { name: "Ciencias del Mar — Gestión Pesquera Sustentable", teacherId: monica.id },
+  });
+  const fisheriesClassGroup =
+    existingFisheriesGroup ??
+    (await prisma.classGroup.create({
+      data: {
+        name: "Ciencias del Mar — Gestión Pesquera Sustentable",
+        description:
+          "Grupo que analiza datos de pesca local para apoyar decisiones de manejo sustentable en comunidades costeras.",
+        bannerUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1200&q=75&fit=crop",
+        teacherId: monica.id,
+      },
+    }));
+  await ensureClassGroupMember(fisheriesClassGroup.id, luis.id);
+  await ensureClassGroupMember(fisheriesClassGroup.id, renata.id);
+  await ensureClassGroupMember(fisheriesClassGroup.id, ana.id);
+  const existingFisheriesResource = await prisma.classGroupResource.findFirst({
+    where: { classGroupId: fisheriesClassGroup.id, label: "Lineamientos para el tablero de datos" },
+  });
+  if (!existingFisheriesResource) {
+    await prisma.classGroupResource.create({
+      data: {
+        classGroupId: fisheriesClassGroup.id,
+        creatorId: monica.id,
+        type: EvidenceType.LINK,
+        url: "https://example.com/lineamientos-tablero-pesca.pdf",
+        label: "Lineamientos para el tablero de datos",
+        description: "Lineamientos de captura y limpieza de datos compartidos con las cooperativas pesqueras.",
+      },
+    });
+  }
+  await prisma.project.update({
+    where: { id: fisheriesDataProject.id },
+    data: { classGroupId: fisheriesClassGroup.id },
+  });
+
+  const existingDatabasesGroup = await prisma.classGroup.findFirst({
+    where: { name: "Bases de Datos y Backend — ISC 5to semestre", teacherId: carlos.id },
+  });
+  const databasesClassGroup =
+    existingDatabasesGroup ??
+    (await prisma.classGroup.create({
+      data: {
+        name: "Bases de Datos y Backend — ISC 5to semestre",
+        description:
+          "Grupo de 5to semestre de Ingeniería en Sistemas Computacionales enfocado en modelado de datos y desarrollo de APIs.",
+        bannerUrl: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=1200&q=75&fit=crop",
+        teacherId: carlos.id,
+      },
+    }));
+  await ensureClassGroupMember(databasesClassGroup.id, ana.id);
+  await ensureClassGroupMember(databasesClassGroup.id, luis.id);
+  await ensureClassGroupMember(databasesClassGroup.id, diego.id);
+  await ensureClassGroupMember(databasesClassGroup.id, jorge.id);
+  const existingDatabasesResource = await prisma.classGroupResource.findFirst({
+    where: { classGroupId: databasesClassGroup.id, label: "Guía de modelado de base de datos" },
+  });
+  if (!existingDatabasesResource) {
+    await prisma.classGroupResource.create({
+      data: {
+        classGroupId: databasesClassGroup.id,
+        creatorId: carlos.id,
+        type: EvidenceType.LINK,
+        url: "https://example.com/guia-modelado-bd.pdf",
+        label: "Guía de modelado de base de datos",
+        description: "Guía de referencia para el diseño de esquemas relacionales del proyecto final.",
+      },
+    });
+  }
+
   // --- Challenge (Retos screen) ----------------------------------------
 
   console.log("[demo] Seeding a sample challenge...");

@@ -79,9 +79,10 @@ function Login() {
           <FieldError message={errors.password?.message} />
         </label>
 
-        <a href="#" className="self-end -mt-1 text-xs text-ink-soft hover:text-accent-primary">
+        {/* Recuperar contraseña: no implementado todavía. */}
+        {/* <a href="#" className="self-end -mt-1 text-xs text-ink-soft hover:text-accent-primary">
           ¿Olvidaste tu contraseña?
-        </a>
+        </a> */}
 
         <button
           type="submit"
